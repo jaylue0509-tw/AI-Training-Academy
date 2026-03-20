@@ -175,6 +175,16 @@ export default function App() {
       const saved = localStorage.getItem('ai_courses_v12');
       const base = JSON.parse(JSON.stringify(INITIAL_COURSES));
 
+      // ⚠️ 重置報名計數的輔助函式 — enrolled/enrollees 永遠從雲端來
+      const resetEnrollment = (data) => {
+        Object.keys(data).forEach(date => {
+          if (Array.isArray(data[date])) {
+            data[date] = data[date].map(c => ({ ...c, enrolled: 0, enrollees: [] }));
+          }
+        });
+        return data;
+      };
+
       // 若 v12 無資料，嘗試繼承舊版連結（保留管理員設定的 pdfUrl/outlineUrl/surveyUrl）
       const legacyRaw = (!saved || saved === 'null')
         ? (localStorage.getItem('ai_courses_v11') || localStorage.getItem('ai_courses_v10'))
@@ -183,7 +193,6 @@ export default function App() {
       if (legacyRaw) {
         try {
           const legacyData = JSON.parse(legacyRaw);
-          // 把舊版已有的連結合併進 base
           Object.keys(legacyData || {}).forEach(date => {
             (legacyData[date] || []).forEach(old => {
               if (!old) return;
@@ -201,12 +210,12 @@ export default function App() {
             });
           });
         } catch (_) {}
-        return base;
+        return resetEnrollment(base);
       }
 
       if (saved && saved !== 'null') {
         const savedData = JSON.parse(saved);
-        if (!savedData || typeof savedData !== 'object') return base;
+        if (!savedData || typeof savedData !== 'object') return resetEnrollment(base);
         const allSavedIds = new Set();
         Object.keys(savedData).forEach(date => {
           if (Array.isArray(savedData[date])) {
@@ -221,9 +230,10 @@ export default function App() {
             }
           });
         });
-        return savedData;
+        // 重置報名計數：確保所有用戶初始看到相同的狀態（0），等待雲端同步
+        return resetEnrollment(savedData);
       }
-      return base;
+      return resetEnrollment(base);
     } catch (e) { return JSON.parse(JSON.stringify(INITIAL_COURSES)); }
   });
 
@@ -250,7 +260,14 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ai_courses_v12', JSON.stringify(coursesData));
+    // 只儲存課程結構，不儲存報名狀態（避免不同用戶看到過期人數）
+    const toSave = {};
+    Object.keys(coursesData).forEach(date => {
+      if (Array.isArray(coursesData[date])) {
+        toSave[date] = coursesData[date].map(({ enrolled: _e, enrollees: _en, ...rest }) => rest);
+      }
+    });
+    localStorage.setItem('ai_courses_v12', JSON.stringify(toSave));
   }, [coursesData]);
 
   useEffect(() => {
