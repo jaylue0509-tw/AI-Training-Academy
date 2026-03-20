@@ -4,60 +4,44 @@ import {
   Video, FileText, CheckCircle2, List, Settings, Download,
   Edit3, Save, Eye, TrendingUp, BookOpen, UserPlus,
   BarChart3, Upload, Film, PlayCircle, HeartHandshake,
-  Send, Database, Mail, FolderOpen, Search, Printer, Trash2
+  Send, Database, Mail, FolderOpen, Search, Printer, Trash2, Filter, MapPin
 } from 'lucide-react';
 
 // --- 初始資料區 (根據您的 Excel 附件內容整理) ---
 const INITIAL_COURSES = {
-  '2026-3-13': [{ id: 1, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱育伊', level: '初級', deadline: '2026-03-10', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-3-20': [{ id: 2, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-03-17', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-3-27': [{ id: 3, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-03-24', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-10': [{ id: 4, topic: '自動化短影音工具', summary: '【選修】高級', instructor: '姜順帆', level: '高級', deadline: '2026-04-07', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-14': [{ id: 5, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱育伊', level: '初級', deadline: '2026-04-11', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-17': [{ id: 6, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-04-14', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-21': [{ id: 7, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-04-18', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-24': [{ id: 8, topic: '善用自然語言調教', summary: '【選修】初級', instructor: '李品勱', level: '初級', deadline: '2026-04-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-4-28': [{ id: 9, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-04-25', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-8': [{ id: 10, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-05-05', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-15': [{ id: 11, topic: 'SORA+即夢微影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-05-12', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-19': [{ id: 12, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-05-16', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-20': [{ id: 13, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱育伊', level: '初級', deadline: '2026-05-17', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-22': [{ id: 14, topic: '開發自動生成績分析', summary: '【選修】中級', instructor: '呂紹君', level: '中級', deadline: '2026-05-19', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-26': [{ id: 15, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-05-23', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-27': [{ id: 16, topic: '善用自然語言調教', summary: '【選修】初級', instructor: '李品勱', level: '初級', deadline: '2026-05-24', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-5-29': [{ id: 17, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-05-26', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-10': [{ id: 18, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-06-07', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-12': [{ id: 19, topic: '商品行銷影音實戰', summary: '【選修】中級', instructor: '羅于祥', level: '中級', deadline: '2026-06-09', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-16': [{ id: 20, topic: 'SORA+即夢微影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-06-13', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-23': [{ id: 21, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-06-20', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-24': [{ id: 22, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱育伊', level: '初級', deadline: '2026-06-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-6-26': [{ id: 23, topic: '捷徑網站生成器', summary: '【選修】初級', instructor: '顏嘉佑', level: '初級', deadline: '2026-06-23', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-1': [{ id: 24, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-06-28', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-3': [{ id: 25, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '孫彙廷', level: '初級', deadline: '2026-06-30', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-7': [{ id: 26, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-07-04', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-8': [{ id: 27, topic: '善用自然語言調教', summary: '【選修】初級', instructor: '李品勱', level: '初級', deadline: '2026-07-05', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-10': [{ id: 28, topic: '開發自動生成績分析', summary: '【選修】中級', instructor: '呂紹君', level: '中級', deadline: '2026-07-07', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-15': [{ id: 29, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-07-12', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-17': [{ id: 30, topic: 'Python-數據分析', summary: '【選修】中級', instructor: '劉承昕', level: '中級', deadline: '2026-07-14', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-22': [{ id: 31, topic: 'SORA+即夢微影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-07-19', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-24': [{ id: 32, topic: '商品行銷影音實戰', summary: '【選修】中級', instructor: '羅于祥', level: '中級', deadline: '2026-07-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-28': [{ id: 33, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-07-25', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-7-31': [{ id: 34, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '孫彙廷', level: '初級', deadline: '2026-07-28', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-4': [{ id: 35, topic: '捷徑網站生成器', summary: '【選修】初級', instructor: '顏嘉佑', level: '初級', deadline: '2026-08-01', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-7': [{ id: 36, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-08-04', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-12': [{ id: 37, topic: '善用自然語言調教', summary: '【選修】初級', instructor: '李品勱', level: '初級', deadline: '2026-08-09', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-14': [{ id: 38, topic: '自動化工作流', summary: '【選修】中級', instructor: '余泓逸', level: '中級', deadline: '2026-08-11', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-18': [{ id: 39, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-08-15', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-19': [{ id: 40, topic: 'Python-數據分析', summary: '【選修】中級', instructor: '劉承昕', level: '中級', deadline: '2026-08-16', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-21': [{ id: 41, topic: '資料整理生成器', summary: '【選修】中級', instructor: '吳思宏', level: '中級', deadline: '2026-08-18', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-25': [{ id: 42, topic: 'SORA+即夢微影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-08-22', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-26': [{ id: 43, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '孫彙廷', level: '初級', deadline: '2026-08-23', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-8-28': [{ id: 44, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-08-25', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-9-11': [{ id: 45, topic: '自動化工作流', summary: '【選修】中級', instructor: '余泓逸', level: '中級', deadline: '2026-09-08', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-9-16': [{ id: 46, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-09-13', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-9-18': [{ id: 47, topic: '資料整理生成器', summary: '【選修】中級', instructor: '吳思宏', level: '中級', deadline: '2026-09-15', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-9-22': [{ id: 48, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '孫彙廷', level: '初級', deadline: '2026-09-19', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
-  '2026-9-30': [{ id: 49, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-09-27', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }]
+  '2026-3-20': [{ id: 1, topic: 'AI實戰：從菜市場到城市地標', summary: '【必修】初級', instructor: '姜順帆', level: '初級', deadline: '2026-03-17', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-3-23': [{ id: 2, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱宥伊', level: '初級', deadline: '2026-03-20', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-3-27': [{ id: 3, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-03-24', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-4-17': [{ id: 4, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-04-14', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-4-24': [{ id: 5, topic: '自動化短影音工具', summary: '【選修】高級', instructor: '姜順帆', level: '高級', deadline: '2026-04-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-4-29': [{ id: 6, topic: '商品短影音生成', summary: '【選修】初級', instructor: '駱宥伊', level: '初級', deadline: '2026-04-26', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-13': [{ id: 7, topic: 'NotebookLM應用版', summary: '【必修】初級', instructor: '蔡舜如', level: '初級', deadline: '2026-05-10', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-15': [{ id: 8, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-05-12', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-20': [{ id: 9, topic: 'LINE BOT自動提醒', summary: '【選修】初級', instructor: '呂紹君', level: '初級', deadline: '2026-05-17', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-22': [{ id: 10, topic: 'SORA+即夢產影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-05-19', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-27': [{ id: 11, topic: '自動化短影音工具', summary: '【選修】高級', instructor: '姜順帆', level: '高級', deadline: '2026-05-24', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-5-29': [{ id: 12, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-05-26', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-6-12': [{ id: 13, topic: '善用自然語言編程', summary: '【選修】初級', instructor: '李品勳', level: '初級', deadline: '2026-06-09', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-6-17': [{ id: 14, topic: 'Python-報表整理', summary: '【選修】初級', instructor: '王培仲', level: '初級', deadline: '2026-06-14', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-6-24': [{ id: 15, topic: 'SORA+即夢產影音', summary: '【選修】初級', instructor: '顏博震', level: '初級', deadline: '2026-06-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-6-26': [{ id: 16, topic: '問卷自動生成與分析', summary: '【選修】中級', instructor: '呂紹君', level: '中級', deadline: '2026-06-23', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-1': [{ id: 17, topic: '提示詞大神進階版', summary: '【必修】初級', instructor: '宋智浩', level: '初級', deadline: '2026-06-28', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-10': [{ id: 18, topic: '商品行銷影音實戰', summary: '【選修】中級', instructor: '羅于軒', level: '中級', deadline: '2026-07-07', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-15': [{ id: 19, topic: '善用自然語言編程', summary: '【選修】初級', instructor: '李品勳', level: '初級', deadline: '2026-07-12', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-17': [{ id: 20, topic: '簡報網站生成器', summary: '【選修】初級', instructor: '顏嘉佑', level: '初級', deadline: '2026-07-14', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-24': [{ id: 21, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '待確認', level: '初級', deadline: '2026-07-21', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-7-29': [{ id: 22, topic: '問卷自動生成與分析', summary: '【選修】中級', instructor: '呂紹君', level: '中級', deadline: '2026-07-26', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-7': [{ id: 23, topic: 'Python-數據分析', summary: '【選修】中級', instructor: '劉承昕', level: '中級', deadline: '2026-08-04', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-12': [{ id: 24, topic: '商品行銷影音實戰', summary: '【選修】中級', instructor: '羅于軒', level: '中級', deadline: '2026-08-09', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-14': [{ id: 25, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-08-11', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-19': [{ id: 26, topic: '簡報網站生成器', summary: '【選修】初級', instructor: '顏嘉佑', level: '初級', deadline: '2026-08-16', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-21': [{ id: 27, topic: '自動化工作流', summary: '【選修】中級', instructor: '余泓逸', level: '中級', deadline: '2026-08-18', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-26': [{ id: 28, topic: '玩轉GPT與Gemini', summary: '【必修】初級', instructor: '待確認', level: '初級', deadline: '2026-08-23', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-8-28': [{ id: 29, topic: '資料整理生成器', summary: '【選修】中級', instructor: '吳思宏', level: '中級', deadline: '2026-08-25', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-9-9': [{ id: 30, topic: 'Python-數據分析', summary: '【選修】中級', instructor: '劉承昕', level: '中級', deadline: '2026-09-06', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-9-16': [{ id: 31, topic: 'AI Agent工具應用', summary: '【必修】初級', instructor: '劉邦彪', level: '初級', deadline: '2026-09-13', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-9-23': [{ id: 32, topic: '自動化工作流', summary: '【選修】中級', instructor: '余泓逸', level: '中級', deadline: '2026-09-20', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
+  '2026-9-30': [{ id: 33, topic: '資料整理生成器', summary: '【選修】中級', instructor: '吳思宏', level: '中級', deadline: '2026-09-27', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }]
 };
 
 
@@ -77,15 +61,23 @@ const ROLE_LABELS = {
 
 const INITIAL_VIDEOS = [
   { id: 1, topic: '美容洗澣5步驟 - 實術課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: 'https://drive.google.com/file/d/1wJX7FLqVhS5v4gZWaU4d4dU5E8c8vnWt/view', size: '229.5 MB', views: 0, clicks: 0, ctr: '-', date: '2025-09-08', instructor: '內部課程' },
-  { id: 2, topic: '商品短影音生成 - AI實戰課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-13', instructor: '駱育伊' },
-  { id: 3, topic: 'NotebookLM應用版 - 通識必修課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-20', instructor: '蔡舜如' },
-  { id: 4, topic: 'LINE BOT自動提醒 - 行政效率選修課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-27', instructor: '呂紹君' },
-  { id: 5, topic: '自動化短影音工具 - 高階實戰課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-04-10', instructor: '姜順帆' },
-  { id: 6, topic: '企劃短講 - AI文案生成實戰影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-04-24', instructor: '曾彥寧' },
-  { id: 7, topic: 'Excel 自動化排班 - 行政效率選修影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-08', instructor: '邱詩芸' },
-  { id: 8, topic: '社群互動 AI 圖文實戰課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-15', instructor: '林文婷' },
-  { id: 9, topic: '語音辨識與會議紀錄 - AI實戰影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-22', instructor: '林怡君' },
-  { id: 10, topic: '數據思維與商業分析 - 百度菁英課程影音', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-06-19', instructor: '外聘講師' },
+  { id: 2, topic: 'AI實戰：從菜市場到城市地標 - 影音生成【必修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-20', instructor: '姜順帆' },
+  { id: 3, topic: '商品短影音生成 - 影音生成【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-23', instructor: '駱宥伊' },
+  { id: 4, topic: 'NotebookLM應用版 - 通識課程【必修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-03-27', instructor: '蔡舜如' },
+  { id: 5, topic: 'LINE BOT自動提醒 - 行政效率【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-04-17', instructor: '呂紹君' },
+  { id: 6, topic: '自動化短影音工具 - 影音生成【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-04-24', instructor: '姜順帆' },
+  { id: 7, topic: 'Python-報表整理 - 數據分析【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-15', instructor: '王培仲' },
+  { id: 8, topic: 'SORA+即夢產影音 - 影音生成【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-22', instructor: '顏博震' },
+  { id: 9, topic: '提示詞大神進階版 - 通識課程【必修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-05-29', instructor: '宋智浩' },
+  { id: 10, topic: '善用自然語言編程 - 自然語言編程【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-06-12', instructor: '李品勳' },
+  { id: 11, topic: '問卷自動生成與分析 - 行政效率【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-06-26', instructor: '呂紹君' },
+  { id: 12, topic: '商品行銷影音實戰 - 影音生成【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-07-10', instructor: '羅于軒' },
+  { id: 13, topic: '簡報網站生成器 - 自然語言編程【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-07-17', instructor: '顏嘉佑' },
+  { id: 14, topic: '玩轉GPT與Gemini - 通識課程【必修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-07-24', instructor: '待確認' },
+  { id: 15, topic: 'Python-數據分析 - 數據分析【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-08-07', instructor: '劉承昕' },
+  { id: 16, topic: 'AI Agent工具應用 - 通識課程【必修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-08-14', instructor: '劉邦彪' },
+  { id: 17, topic: '自動化工作流 - 數據分析【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-08-21', instructor: '余泓逸' },
+  { id: 18, topic: '資料整理生成器 - 自然語言編程【選修】', folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL', driveFileUrl: '', size: '請上傳影片', views: 0, clicks: 0, ctr: '-', date: '2026-08-28', instructor: '吳思宏' },
 ];
 
 // --- 輔助函數：動態計算月曆中的字體大小 ---
@@ -106,9 +98,25 @@ const getCourseLevelStatus = (course) => {
   } else if (course && course.summary) {
     text = course.summary;
   }
-  if (text.includes('高階') || text.includes('高級') || text === '高級') return { text: '高級', color: 'bg-gradient-to-r from-red-500 to-rose-600 text-white border border-red-600', ribbon: 'bg-gradient-to-b from-rose-500 to-red-600 text-white shadow-red-200' };
-  if (text.includes('中階') || text.includes('中級') || text.includes('進階') || text.includes('應用版') || text === '中級') return { text: '中級', color: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-600', ribbon: 'bg-gradient-to-b from-orange-400 to-amber-600 text-white shadow-orange-200' };
-  return { text: '初級', color: 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white border border-emerald-500', ribbon: 'bg-gradient-to-b from-teal-400 to-emerald-500 text-white shadow-emerald-200' };
+  if (text.includes('高階') || text.includes('高級') || text === '高級') return { text: '高級', color: 'bg-gradient-to-r from-red-500 to-rose-600 text-white border border-red-600', ribbon: 'bg-gradient-to-b from-rose-500 to-red-600 text-white shadow-red-200', cardBg: 'bg-rose-50/80 hover:bg-white hover:border-rose-300' };
+  if (text.includes('中階') || text.includes('中級') || text.includes('進階') || text.includes('應用版') || text === '中級') return { text: '中級', color: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-600', ribbon: 'bg-gradient-to-b from-orange-400 to-amber-600 text-white shadow-orange-200', cardBg: 'bg-orange-50/80 hover:bg-white hover:border-orange-300' };
+  return { text: '初級', color: 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white border border-emerald-500', ribbon: 'bg-gradient-to-b from-teal-400 to-emerald-500 text-white shadow-emerald-200', cardBg: 'bg-emerald-50/80 hover:bg-white hover:border-emerald-300' };
+};
+
+const getCourseEmoji = (topic) => {
+  const t = (topic || '').toLowerCase();
+  if (t.includes('影音') || t.includes('video')) return '🎬';
+  if (t.includes('python') || t.includes('程式') || t.includes('報表')) return '🐍';
+  if (t.includes('line') || t.includes('bot')) return '🤖';
+  if (t.includes('notebook') || t.includes('lm')) return '📓';
+  if (t.includes('提示詞') || t.includes('prompt')) return '🪄';
+  if (t.includes('生成') || t.includes('精華') || t.includes('ai')) return '🧠';
+  if (t.includes('自動化') || t.includes('workflow')) return '⚙️';
+  if (t.includes('分析') || t.includes('data')) return '📊';
+  if (t.includes('玩轉') || t.includes('gemini') || t.includes('gpt')) return '✨';
+  if (t.includes('行銷')) return '🚀';
+  if (t.includes('美容') || t.includes('術')) return '💆';
+  return '🌟';
 };
 
 // --- 輔助函數：嚴格去重與標準化 ---
@@ -134,29 +142,36 @@ const normalizeDate = (d) => {
 };
 
 // --- 同步至 Google Sheets (需搭配 Apps Script) ---
-const syncToGoogleSheet = async (sheetId, data) => {
-  // 將資料送到 Google Apps Script Web App (請將下方的 URL 換成您實際部署的 Apps Script 網址)
+const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
   const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg/exec';
+  if (onStatusChange) onStatusChange('syncing');
   try {
     const params = new URLSearchParams();
     params.append('sheetId', sheetId);
     Object.keys(data).forEach(key => params.append(key, data[key]));
 
-    await fetch(GOOGLE_APPS_SCRIPT_URL, {
+    // 使用非同步方式發送，不攔截 UI
+    fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params.toString()
+    }).then(() => {
+      if (onStatusChange) onStatusChange('idle');
+    }).catch(err => {
+      console.error('即時同步發生錯誤', err);
+      if (onStatusChange) onStatusChange('error');
     });
   } catch (error) {
-    console.error('即時同步發生錯誤', error);
+    console.error('即時同步發送前錯誤', error);
+    if (onStatusChange) onStatusChange('error');
   }
 };
 
 export default function App() {
   const [coursesData, setCoursesData] = useState(() => {
     try {
-      const saved = localStorage.getItem('ai_courses_v10');
+      const saved = localStorage.getItem('ai_courses_v12');
       const base = JSON.parse(JSON.stringify(INITIAL_COURSES));
       if (saved && saved !== 'null') {
         const savedData = JSON.parse(saved);
@@ -183,7 +198,7 @@ export default function App() {
 
   const [videosData, setVideosData] = useState(() => {
     try {
-      const saved = localStorage.getItem('ai_videos_v10');
+      const saved = localStorage.getItem('ai_videos_v12');
       const base = JSON.parse(JSON.stringify(INITIAL_VIDEOS));
       if (saved && saved !== 'null') {
         const savedVideos = JSON.parse(saved);
@@ -204,11 +219,11 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ai_courses_v10', JSON.stringify(coursesData));
+    localStorage.setItem('ai_courses_v12', JSON.stringify(coursesData));
   }, [coursesData]);
 
   useEffect(() => {
-    localStorage.setItem('ai_videos_v10', JSON.stringify(videosData));
+    localStorage.setItem('ai_videos_v12', JSON.stringify(videosData));
   }, [videosData]);
 
   const [onlineCount, setOnlineCount] = useState(() => Math.floor(Math.random() * 20) + 42);
@@ -416,7 +431,9 @@ export default function App() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInQuery, setCheckInQuery] = useState({ org: '', name: '', email: '' });
   const [checkInResult, setCheckInResult] = useState(null);
+  const [checkInModalMode, setCheckInModalMode] = useState('checkin'); // 'checkin' or 'survey'
 
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'error'
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
 
@@ -455,7 +472,10 @@ export default function App() {
   
   const filteredEnrolleesList = useMemo(() => {
     if (!viewingEnrolleesCourse || !viewingEnrolleesCourse.enrollees) return [];
-    const listWithIdx = viewingEnrolleesCourse.enrollees.map((u, i) => ({ ...u, originalIndex: i }));
+    // 過濾掉空白假資料（沒有姓名或信箱的列）
+    const listWithIdx = viewingEnrolleesCourse.enrollees
+      .filter(u => u && (u.name || '').trim() && (u.email || '').trim())
+      .map((u, i) => ({ ...u, originalIndex: i }));
     if (enrolleeFilterOrg === 'all') return listWithIdx;
     return listWithIdx.filter(e => e.org === enrolleeFilterOrg);
   }, [viewingEnrolleesCourse, enrolleeFilterOrg]);
@@ -473,7 +493,7 @@ export default function App() {
   // ✅ 從課程總表 Google Sheet 拉取最新課程資料（講師、時間、影片連結）並同步報名名單
   const handleFetchCoursesFromCloud = async (silent = false) => {
     try {
-      if (!silent) showToast('⏳ 正在執行 v10 雲端同步協定...');
+      if (!silent) showToast('⏳ 正在執行 v11 雲端同步協定...');
       
       const GAS_RELAY_URL = 'https://script.google.com/macros/s/AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg/exec';
       const resp = await fetch(`${GAS_RELAY_URL}?action=fetchAll&t=${Date.now()}`);
@@ -486,14 +506,20 @@ export default function App() {
             const tc = e['課程主題 / 類別'] || e['課程主題/類別'] || '';
             const topic = tc.split('【')[0].trim();
             const date = normalizeDate(e['上課日期']);
+            const name = (e['報名姓名'] || '').trim();
+            const email = (e['EMAIL'] || e['公司信箱'] || '').toLowerCase().trim();
+            // ⛔ 跳過沒有姓名或信箱的空白列（之前批次同步產生的假資料）
+            if (!name || !email || !topic || !date) return;
             const key = `${normalizeTopic(topic)}_${date}`;
             if (!enrollMap[key]) enrollMap[key] = [];
             enrollMap[key].push({
               org: e['事業體'] || '',
               title: e['職稱'] || '',
-              name: e['報名姓名'] || '',
-              email: (e['EMAIL'] || e['公司信箱'] || '').toLowerCase().trim(),
-              attended: (e['報到狀態'] || '').includes('已報到')
+              name,
+              email,
+              attended: (e['報到狀態'] || '').includes('已報到'),
+              practicalDone: (e['實作狀態'] || '').includes('已完成'),
+              surveyDone: (e['問卷狀態'] || '').includes('已完成')
             });
           });
 
@@ -625,7 +651,8 @@ export default function App() {
           const isAttended = attendedVal.includes('已報到') || attendedVal === 'true' || attendedVal === 'TRUE';
           const action = row.c[actionI]?.v || '';
 
-          if (!tc || !email || !rawDate) return;
+          // ⛔ 跳過沒有姓名或信箱的空白列（課程骨架假資料）
+          if (!tc || !email || !name || !rawDate) return;
 
           // 使用標準化 Topic 名稱 (去空格/符號) 與 標準化日期
           const topicOnly = tc.split('【')[0].trim();
@@ -638,7 +665,12 @@ export default function App() {
             enrollMap[key] = enrollMap[key].filter(u => u.email !== email);
           } else if (name) {
             if (!enrollMap[key].some(u => u.email === email)) {
-              enrollMap[key].push({ org, title, name, email, attended: isAttended });
+              enrollMap[key].push({ 
+                org, title, name, email, 
+                attended: isAttended,
+                practicalDone: (row.c[eIdx['實作狀態']]?.v || '').includes('已完成'),
+                surveyDone: (row.c[eIdx['問卷狀態']]?.v || '').includes('已完成')
+              });
             }
           }
         });
@@ -1060,8 +1092,14 @@ export default function App() {
               u.name === checkInQuery.name.trim() &&
               u.email.toLowerCase() === checkInQuery.email.trim().toLowerCase()
             );
-            if (idx >= 0) {
-              newEnrollees[idx] = { ...newEnrollees[idx], attended: true };
+    if (idx >= 0) {
+              const updatedEnrollee = { 
+                ...newEnrollees[idx], 
+                attended: true,
+                practicalDone: newEnrollees[idx].practicalDone || false,
+                surveyDone: newEnrollees[idx].surveyDone || false
+              };
+              newEnrollees[idx] = updatedEnrollee;
             }
             return { ...c, enrollees: newEnrollees };
           }
@@ -1075,7 +1113,6 @@ export default function App() {
       if (!Array.isArray(prev)) return prev;
       return prev.map(c => {
         if (c.id === courseId) {
-          // ✅ 同步報到狀態到 Google Sheet (1m98...)
           const course = c;
           const displayDate = course.displayDate || (() => {
             const today = new Date();
@@ -1090,7 +1127,7 @@ export default function App() {
             '報到狀態': '✅ 已報到',
             '報到時間': new Date().toLocaleString(),
             '問卷連結': course.surveyUrl || '尚未開放（課後將開啟）'
-          });
+          }, setSyncStatus);
 
           return { ...c, enrollees: c.enrollees.map(u => u.email.toLowerCase() === checkInQuery.email.toLowerCase() ? { ...u, attended: true } : u) };
         }
@@ -1098,8 +1135,122 @@ export default function App() {
       });
     });
 
-    showToast("✅ 線上報到成功！現已開放填寫課後問卷。");
-    setTimeout(() => handleFetchCoursesFromCloud(true), 1500); // 報到後非同步刷新
+    showToast("✅ 線上報到成功！請繼續完成「實作」與「問卷」確認。");
+    setTimeout(() => handleFetchCoursesFromCloud(true), 1500);
+  };
+
+  const handleTogglePractical = (courseId, email, name, status) => {
+    setCoursesData(prev => {
+      const newData = { ...prev };
+      Object.keys(newData).forEach(ds => {
+        newData[ds] = newData[ds].map(c => {
+          if (c.id === courseId) {
+            const newEnrollees = c.enrollees.map(u => 
+              (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+              ? { ...u, practicalDone: status } 
+              : u
+            );
+            return { ...c, enrollees: newEnrollees };
+          }
+          return c;
+        });
+      });
+      return newData;
+    });
+    
+    // Update checkInResult if in student modal
+    setCheckInResult(prev => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map(c => {
+        if (c.id === courseId) {
+          return { ...c, enrollees: c.enrollees.map(u => 
+            (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+            ? { ...u, practicalDone: status } 
+            : u
+          )};
+        }
+        return c;
+      });
+    });
+
+    // Update viewingEnrolleesCourse if in admin modal
+    setViewingEnrolleesCourse(prev => {
+      if (!prev || prev.id !== courseId) return prev;
+      return { ...prev, enrollees: prev.enrollees.map(u => 
+        (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+        ? { ...u, practicalDone: status } 
+        : u
+      )};
+    });
+
+    const targetCourse = allCoursesList.find(c => c.id === courseId);
+    if (targetCourse) {
+      showToast(status ? "🛠️ 實作完成已確認！正在同步至雲端..." : "ℹ️ 已取消實作確認，正在同步...");
+      syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
+        '上課日期': targetCourse.displayDate,
+        '課程主題 / 類別': `${targetCourse.topic} ${targetCourse.summary}`,
+        '報名姓名': name,
+        'EMAIL': email.toLowerCase(),
+        '實作狀態': status ? '✅ 已完成' : '❌ 未完成',
+        '更新時間': new Date().toLocaleString()
+      }, setSyncStatus);
+    }
+  };
+
+  const handleToggleSurvey = (courseId, email, name, status) => {
+    setCoursesData(prev => {
+      const newData = { ...prev };
+      Object.keys(newData).forEach(ds => {
+        newData[ds] = newData[ds].map(c => {
+          if (c.id === courseId) {
+            const newEnrollees = c.enrollees.map(u => 
+              (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+              ? { ...u, surveyDone: status } 
+              : u
+            );
+            return { ...c, enrollees: newEnrollees };
+          }
+          return c;
+        });
+      });
+      return newData;
+    });
+
+    setCheckInResult(prev => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map(c => {
+        if (c.id === courseId) {
+          return { ...c, enrollees: c.enrollees.map(u => 
+            (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+            ? { ...u, surveyDone: status } 
+            : u
+          )};
+        }
+        return c;
+      });
+    });
+
+    setViewingEnrolleesCourse(prev => {
+      if (!prev || prev.id !== courseId) return prev;
+      return { ...prev, enrollees: prev.enrollees.map(u => 
+        (u.email.toLowerCase() === email.toLowerCase() && u.name === name) 
+        ? { ...u, surveyDone: status } 
+        : u
+      )};
+    });
+
+    const targetCourse = allCoursesList.find(c => c.id === courseId);
+    if (targetCourse) {
+      showToast(status ? "📝 問卷填寫已確認！正在同步至雲端..." : "ℹ️ 已撤回問卷確認，正在同步...");
+      syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
+        '上課日期': targetCourse.displayDate,
+        '課程主題 / 類別': `${targetCourse.topic} ${targetCourse.summary}`,
+        '報名姓名': name,
+        'EMAIL': email.toLowerCase(),
+        '問卷狀態': status ? '✅ 已完成' : '❌ 未完成',
+        '更新時間': new Date().toLocaleString()
+      }, setSyncStatus);
+    }
   };
 
   const handleEnrollSubmit = (e) => {
@@ -1223,17 +1374,14 @@ export default function App() {
 
   // 報名表（1m98...）— 批次同步全部報名紀錄
   const handleSyncAllEnrollmentsToSheet = async () => {
-    if (!window.confirm("確定要把目前所有的(含空報名)課程清單與報名紀錄同步到「課程報名表」Google Sheet 嗎？")) return;
+    if (!window.confirm("確定要把目前所有的報名紀錄同步到「課程報名表」Google Sheet 嗎？（未有人報名的課程不會推送空白資料）")) return;
     const rows = [];
     allCoursesList.forEach(course => {
-      // 若課程尚未有任何人報名，我們也把該課程的骨架推送到報名表中！(解決原資料無人報名的問題)
-      if (!course.enrollees || course.enrollees.length === 0) {
-        rows.push({ course, enrollee: { org: '', title: '', name: '', email: '' } });
-      } else {
-        course.enrollees.forEach(u => {
-          rows.push({ course, enrollee: u });
-        });
-      }
+      // 只推有人報名的紀錄，避免空白假資料進入報名表
+      if (!course.enrollees || course.enrollees.length === 0) return;
+      course.enrollees.forEach(u => {
+        rows.push({ course, enrollee: u });
+      });
     });
 
     if (rows.length === 0) { showToast('目前尚無任何課程紀錄'); return; }
@@ -1415,9 +1563,16 @@ export default function App() {
         if (!map[uniqueKey]) {
           map[uniqueKey] = { org: user.org, title: user.title, name: user.name, email: userEmail, requiredCourses: [], electiveCourses: [], baiduCourses: [], totalCount: 0 };
         }
-        if (type === 'required') map[uniqueKey].requiredCourses.push(course.topic);
-        else if (type === 'elective') map[uniqueKey].electiveCourses.push(course.topic);
-        else if (type === 'baidu') map[uniqueKey].baiduCourses.push(course.topic);
+        const courseStatus = {
+          topic: course.topic,
+          date: course.displayDate,
+          attended: user.attended || false,
+          practicalDone: user.practicalDone || false,
+          surveyDone: user.surveyDone || false
+        };
+        if (type === 'required') map[uniqueKey].requiredCourses.push(courseStatus);
+        else if (type === 'elective') map[uniqueKey].electiveCourses.push(courseStatus);
+        else if (type === 'baidu') map[uniqueKey].baiduCourses.push(courseStatus);
         map[uniqueKey].totalCount++;
       });
     });
@@ -1530,23 +1685,36 @@ export default function App() {
         {/* --- 頭部控制列 --- */}
         <div className="flex flex-col mb-4 shrink-0 gap-4">
 
-          <div className="flex flex-col xl:flex-row flex-wrap justify-between items-center gap-4 w-full">
-            <div className="flex flex-row items-baseline py-2 relative pl-5 flex-wrap gap-x-4 shrink-0">
-              <div className="absolute left-0 top-1 bottom-1 w-1.5 bg-gradient-to-b from-orange-500 to-red-600 rounded-full shadow-sm"></div>
-              <h1 className="corporate-art-title text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-800 via-orange-700 to-red-600">
-                AI實戰學院課程
-              </h1>
-              <span className="text-[11px] md:text-sm font-bold tracking-[0.25em] text-red-600/70 uppercase">
-                Enterprise AI Practical Academy
-              </span>
-              <div className="flex items-center gap-2 ml-2 bg-emerald-100/60 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] md:text-xs font-black text-emerald-800 tracking-wider">即時線上: {onlineCount} 人</span>
-              </div>
-            </div>
+              <div className="flex flex-col xl:flex-row flex-wrap justify-between items-center gap-4 w-full">
+                <div className="flex flex-row items-baseline py-2 relative pl-5 flex-wrap gap-x-4 shrink-0">
+                  <div className="absolute left-0 top-1 bottom-1 w-1.5 bg-gradient-to-b from-orange-500 to-red-600 rounded-full shadow-sm"></div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="corporate-art-title text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-800 via-orange-700 to-red-600">
+                      AI實戰學院課程
+                    </h1>
+                    {syncStatus === 'syncing' && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-600 text-[10px] font-bold rounded-full animate-in fade-in zoom-in duration-300 border border-sky-100 shadow-sm">
+                        <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-ping"></div>
+                        雲端同步中...
+                      </div>
+                    )}
+                    {syncStatus === 'error' && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100 shadow-sm animate-bounce">
+                        <X size={10} /> 同步異常
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[11px] md:text-sm font-bold tracking-[0.25em] text-red-600/70 uppercase">
+                    Enterprise AI Practical Academy
+                  </span>
+                  <div className="flex items-center gap-2 ml-2 bg-emerald-100/60 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[10px] md:text-xs font-black text-emerald-800 tracking-wider">即時線上: {onlineCount} 人</span>
+                  </div>
+                </div>
 
             <div className="flex flex-nowrap justify-center bg-white/50 p-2 md:p-2.5 md:px-3 lg:px-4 rounded-full border border-orange-100 shadow-inner backdrop-blur-sm items-center gap-2 xl:gap-3 w-max">
               <button
@@ -1556,10 +1724,16 @@ export default function App() {
                 <Search size={18} /> <span className="hidden sm:inline">個人修課查詢</span>
               </button>
               <button
-                onClick={() => { setShowCheckInModal(true); setCheckInResult(null); setCheckInQuery({ org: '', name: '', email: '' }); }}
+                onClick={() => { setCheckInModalMode('checkin'); setShowCheckInModal(true); setCheckInResult(null); setCheckInQuery({ org: '', name: '', email: '' }); }}
                 className="shrink-0 px-4 py-2 md:px-5 md:py-2.5 rounded-full flex items-center gap-1.5 md:gap-2 transition-all duration-300 text-sm md:text-base whitespace-nowrap text-emerald-700 hover:text-white font-bold bg-emerald-50 hover:bg-emerald-500 shadow-sm hover:shadow-md border border-emerald-100"
               >
-                <CheckCircle2 size={18} /> <span className="hidden sm:inline">線上報到與問卷</span>
+                <CheckCircle2 size={18} /> <span className="hidden sm:inline">今日線上報到</span>
+              </button>
+              <button
+                onClick={() => { setCheckInModalMode('survey'); setShowCheckInModal(true); setCheckInResult(null); setCheckInQuery({ org: '', name: '', email: '' }); }}
+                className="shrink-0 px-4 py-2 md:px-5 md:py-2.5 rounded-full flex items-center gap-1.5 md:gap-2 transition-all duration-300 text-sm md:text-base whitespace-nowrap text-pink-700 hover:text-white font-bold bg-pink-50 hover:bg-pink-500 shadow-sm hover:shadow-md border border-pink-100"
+              >
+                <FileText size={18} /> <span className="hidden sm:inline">今日課後問卷</span>
               </button>
               <div className="w-px h-6 bg-gray-300/60 mx-1 md:mx-2"></div>
               {[
@@ -1699,20 +1873,34 @@ export default function App() {
                         }
                       }}
                       className={`group relative min-h-[140px] rounded-[1.5rem] p-3 md:p-4 pl-8 md:pl-10 flex flex-col cursor-pointer transition-all duration-300 ease-out overflow-hidden
-                      ${main ? 'bg-white/80 hover:bg-white border border-orange-100 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-orange-300' : (adminAuthenticated ? 'bg-indigo-50/40 hover:bg-indigo-100/60 border border-indigo-100/60 hover:border-indigo-300 hover:shadow-sm' : 'bg-white/40 hover:bg-white/60 border border-white/60 hover:border-orange-200')}
-                      ${isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-transparent bg-orange-50' : ''}`}>
+                      ${main ? (getCourseLevelStatus(main).cardBg + ' shadow-sm hover:shadow-lg hover:-translate-y-1 border') : (adminAuthenticated ? 'bg-indigo-50/40 hover:bg-indigo-100/60 border border-indigo-100/60 hover:border-indigo-300 hover:shadow-sm' : 'bg-white/40 hover:bg-white/60 border border-white/60 hover:border-orange-200')}
+                      ${isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-transparent' : ''}`}>
                       {main && (
                         <div className={`absolute left-0 top-0 bottom-0 w-6 flex justify-center items-center font-black ${getCourseLevelStatus(main).ribbon}`}>
                           <span className="text-[10px] tracking-[0.2em]" style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}>{getCourseLevelStatus(main).text}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-start mb-2">
-                        <span className={`text-xl md:text-2xl font-bold ${main ? 'text-red-800' : 'text-gray-400'} ${isToday ? 'text-orange-600' : ''}`}>{d}</span>
                         <div className="flex items-center gap-2">
-                          {main && !isCurrentMonthReal && <span className="text-[10px] font-black text-white bg-gray-400 px-1.5 py-0.5 rounded shadow-sm opacity-90 tracking-widest">暫訂課程</span>}
+                          <span className={`text-xl md:text-2xl font-bold ${main ? 'text-red-800' : 'text-gray-400'} ${isToday ? 'text-orange-600' : ''}`}>{d}</span>
+                          {main && <span className="text-lg md:text-xl transition-transform group-hover:scale-150 group-hover:rotate-12 duration-500 ease-out select-none drop-shadow-sm">{getCourseEmoji(main.topic)}</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {main && !isCurrentMonthReal && <span className="text-[10px] font-black text-white bg-gray-400 px-1.5 py-0.5 rounded shadow-sm opacity-90 tracking-widest">暫訂</span>}
                           {main && isCurrentMonthReal && <span className="w-2.5 h-2.5 mt-0.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse"></span>}
                         </div>
                       </div>
+
+                      {/* I'M HERE! 精緻浮水印設計 */}
+                      {isToday && (
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-all duration-700
+                          ${main ? 'opacity-[0.08] group-hover:opacity-25 scale-110 group-hover:scale-125' : 'opacity-100 scale-100'}`}>
+                          <div className="animate-bounce flex flex-col items-center">
+                            <MapPin size={main ? 80 : 64} className="text-orange-500 fill-orange-200" />
+                            <span className={`${main ? 'text-lg' : 'text-xl'} font-black text-orange-600/80 tracking-widest mt-1 uppercase`}>I'm Here</span>
+                          </div>
+                        </div>
+                      )}
                       {main && (
                         <div className="mt-auto flex flex-col gap-1 w-full">
                           <div className="flex justify-center">
@@ -1804,6 +1992,11 @@ export default function App() {
                                       <BookOpen size={14} /> 大綱
                                     </button>
                                   )}
+                                  {adminAuthenticated && c.surveyUrl && (
+                                    <a href={c.surveyUrl} target="_blank" rel="noreferrer" title="填寫問卷" className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-gradient-to-r from-pink-500 to-rose-600 text-white hover:from-pink-600 hover:to-rose-700 rounded-lg text-xs font-bold shadow-sm transition-all hover:scale-105">
+                                      <Send size={14} /> 問卷
+                                    </a>
+                                  )}
                                 </div>
                                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-orange-700 bg-orange-100/80 px-2.5 py-1 rounded-md border border-orange-200">{match ? match[1] : '專業課程'}</span>
                               </td>
@@ -1873,6 +2066,7 @@ export default function App() {
                               <div className="flex gap-2 shrink-0">
                                 {c.pdfUrl && <button onClick={() => setViewingPdfCourse(c)} className="px-2 py-1 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><FileText size={12} />講義</button>}
                                 {c.outlineUrl && <button onClick={() => setViewingOutlineCourse(c)} className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><BookOpen size={12} />大綱</button>}
+                                {adminAuthenticated && c.surveyUrl && <a href={c.surveyUrl} target="_blank" rel="noreferrer" className="px-2 py-1 bg-pink-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><Send size={12} />問卷</a>}
                                 <button
                                   disabled={isFull || !isCourseCurrentMonthReal}
                                   onClick={() => { setSelectedCourseForEnroll(c); setEnrollForm({ org: '', title: '', name: '', email: '' }); }}
@@ -2293,7 +2487,8 @@ export default function App() {
                       {hasPerm('upload_pdf') && (
                         <>
                           <a href="https://drive.google.com/drive/folders/1UD-LgGSLRWbZfRAV1sCSp8xRIeidVy2R" target="_blank" rel="noreferrer" className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-xl text-sm font-bold shadow-md flex items-center gap-2 transition-all hover:scale-105"><Upload size={16} /> 上傳/管理教材</a>
-                          <a href="https://drive.google.com/drive/folders/1iy47QMUEnj3ZuUIK3MulCN__8P6S78EV" target="_blank" rel="noreferrer" className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white rounded-xl text-sm font-bold shadow-md flex items-center gap-2 transition-all hover:scale-105"><FileText size={16} /> 問卷管理</a>
+                          <a href="https://drive.google.com/drive/folders/1Sn703JHpgEoyyn58tL2qmbSdrCtXAm3T" target="_blank" rel="noreferrer" className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white rounded-xl text-sm font-bold shadow-md flex items-center gap-2 transition-all hover:scale-105"><FileText size={16} /> 問卷管理</a>
+                          <a href="https://drive.google.com/drive/folders/1Sn703JHpgEoyyn58tL2qmbSdrCtXAm3T" target="_blank" rel="noreferrer" className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-bold shadow-md flex items-center gap-2 transition-all hover:scale-105"><FolderOpen size={16} /> 問卷結果彙整</a>
                         </>
                       )}
                     </>
@@ -2629,32 +2824,58 @@ export default function App() {
         viewingEnrolleesCourse && (
           <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xl animate-in fade-in">
             <div className="w-full max-w-6xl bg-white rounded-[3.5rem] shadow-[0_60px_120px_rgba(0,0,0,0.5)] overflow-hidden relative flex flex-col h-[85vh]">
-              <div className="p-10 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <h2 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3"><Users size={36} className="text-indigo-600 hidden md:block" /> {viewingEnrolleesCourse.topic}</h2>
+              <div className="p-8 md:p-10 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3"><Users size={36} className="text-indigo-600 hidden md:block" /> {viewingEnrolleesCourse.topic}</h2>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                      <Filter size={16} className="text-indigo-500" />
+                      <select 
+                        value={enrolleeFilterOrg} 
+                        onChange={e => setEnrolleeFilterOrg(e.target.value)}
+                        className="bg-transparent border-none text-sm font-bold text-gray-700 focus:ring-0 cursor-pointer outline-none"
+                      >
+                        <option value="all">所有事業體</option>
+                        {ORG_LIST.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-end">
                   <span className="text-sm md:text-base font-bold text-gray-500 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl shadow-sm border border-gray-200">
-                    出席：{viewingEnrolleesCourse.enrollees?.filter(e => e.attended).length || 0} / 報名 {viewingEnrolleesCourse.enrollees?.length || 0}
+                    出席：{viewingEnrolleesCourse.enrollees?.filter(e => e.attended && (e.name||'').trim() && (e.email||'').trim()).length || 0} / 報名 {viewingEnrolleesCourse.enrollees?.filter(e => (e.name||'').trim() && (e.email||'').trim()).length || 0}
+                    {enrolleeFilterOrg !== 'all' && <span className="text-indigo-600 ml-2">(篩選：{filteredEnrolleesList.length})</span>}
                   </span>
                   {adminAuthenticated && (
-                    <button onClick={() => handlePrintEnrollees(viewingEnrolleesCourse)} className="px-3 py-1.5 md:px-4 md:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold flex items-center gap-2 transition-transform hover:scale-105">
-                      <Printer size={18} /> <span className="hidden sm:inline">列印點名表</span>
+                    <button onClick={() => handlePrintEnrollees(viewingEnrolleesCourse, filteredEnrolleesList)} className="px-3 py-1.5 md:px-4 md:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold flex items-center gap-2 transition-transform hover:scale-105">
+                      <Printer size={18} /> <span className="hidden sm:inline">列印篩選名單</span>
                     </button>
                   )}
-                  <button onClick={() => setViewingEnrolleesCourse(null)} className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-500 transition-colors"><X size={24} /></button>
+                  <button onClick={() => { setViewingEnrolleesCourse(null); setEnrolleeFilterOrg('all'); }} className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-500 transition-colors"><X size={24} /></button>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
-                  <thead className="bg-gray-100 sticky top-0 z-10 text-gray-500 font-black uppercase text-xs"><tr><th className="p-6 md:p-8 text-center w-24">實際<br />出席</th><th className="p-6 md:p-8">序號</th><th className="p-6 md:p-8">事業體/職稱</th><th className="p-6 md:p-8">姓名/信箱</th></tr></thead>
+                  <thead className="bg-gray-100 sticky top-0 z-10 text-gray-500 font-black uppercase text-xs">
+                    <tr>
+                      <th className="p-4 md:p-6 text-center w-20">簽到<br/>報到</th>
+                      <th className="p-4 md:p-6 text-center w-20">核核<br/>實作</th>
+                      <th className="p-4 md:p-6 text-center w-20">核核<br/>問卷</th>
+                      <th className="p-4 md:p-6 w-16 text-center">序號</th>
+                      <th className="p-4 md:p-6">事業體/職稱</th>
+                      <th className="p-4 md:p-6">姓名/信箱</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {viewingEnrolleesCourse.enrollees?.length > 0 ? viewingEnrolleesCourse.enrollees.map((u, i) => (
-                      <tr key={i} className={`border-b border-gray-100 transition-colors ${u.attended ? 'bg-green-50/50' : 'hover:bg-gray-50'}`}>
-                        <td className="p-6 md:p-8 text-center">
+                    {filteredEnrolleesList.length > 0 ? filteredEnrolleesList.map((u, i) => (
+                      <tr key={i} className={`border-b border-gray-100 transition-colors ${u.attended ? 'bg-emerald-50/30' : 'hover:bg-gray-50'}`}>
+                        <td className="p-4 md:p-6 text-center">
                           <input
                             type="checkbox"
                             checked={u.attended || false}
                             onChange={(e) => {
                               const isChecked = e.target.checked;
+                              const targetIdx = u.originalIndex;
                               setCoursesData(prev => {
                                 const newData = { ...prev };
                                 const ds = viewingEnrolleesCourse.dateStr;
@@ -2662,34 +2883,50 @@ export default function App() {
                                   newData[ds] = newData[ds].map(c => {
                                     if (c.id === viewingEnrolleesCourse.id) {
                                       const newEnrollees = [...c.enrollees];
-                                      newEnrollees[i] = { ...newEnrollees[i], attended: isChecked };
+                                      newEnrollees[targetIdx] = { ...newEnrollees[targetIdx], attended: isChecked };
                                       return { ...c, enrollees: newEnrollees };
                                     }
                                     return c;
                                   });
-                                  // 同步更新目前的彈窗顯示狀態
                                   setViewingEnrolleesCourse(newData[ds].find(c => c.id === viewingEnrolleesCourse.id));
                                 }
                                 return newData;
                               });
                             }}
-                            className="w-8 h-8 md:w-10 md:h-10 text-green-600 bg-gray-100 rounded-xl md:rounded-2xl border-2 border-gray-300 focus:ring-green-500 focus:ring-2 cursor-pointer shadow-sm transition-all"
+                            className="w-6 h-6 md:w-8 md:h-8 text-emerald-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-emerald-500 cursor-pointer shadow-sm transition-all"
                           />
                         </td>
-                        <td className="p-6 md:p-8 font-bold text-gray-400 text-xl">{i + 1}</td>
-                        <td className="p-6 md:p-8">
-                          <div className="font-black text-gray-800 text-2xl">{u.org}</div>
-                          <div className="font-bold text-gray-500 text-lg mt-1">{u.title}</div>
+                        <td className="p-4 md:p-6 text-center">
+                          <input
+                            type="checkbox"
+                            checked={u.practicalDone || false}
+                            onChange={(e) => handleTogglePractical(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
+                            className="w-6 h-6 md:w-8 md:h-8 text-blue-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm transition-all"
+                          />
                         </td>
-                        <td className="p-6 md:p-8">
-                          <div className="font-black text-indigo-600 text-3xl">{u.name}</div>
-                          <div className="font-medium text-gray-400 text-base mt-2 flex items-center gap-2"><Mail size={16} /> {u.email || '未提供'}</div>
+                        <td className="p-4 md:p-6 text-center">
+                          <input
+                            type="checkbox"
+                            checked={u.surveyDone || false}
+                            onChange={(e) => handleToggleSurvey(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
+                            className="w-6 h-6 md:w-8 md:h-8 text-pink-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-pink-500 cursor-pointer shadow-sm transition-all"
+                          />
+                        </td>
+                        <td className="p-4 md:p-6 font-bold text-gray-400 text-center">{i + 1}</td>
+                        <td className="p-4 md:p-6">
+                          <div className="font-black text-gray-800 text-lg md:text-xl">{u.org}</div>
+                          <div className="font-bold text-gray-500 text-sm md:text-base mt-0.5">{u.title}</div>
+                        </td>
+                        <td className="p-4 md:p-6">
+                          <div className="font-black text-indigo-600 text-xl md:text-2xl">{u.name}</div>
+                          <div className="font-medium text-gray-400 text-xs md:text-sm mt-1 flex items-center gap-1.5"><Mail size={14} /> {u.email || '未提供'}</div>
                         </td>
                         {adminAuthenticated && hasPerm('edit_courses') && (
                           <td className="p-6 md:p-8 text-center">
                             <button
                               onClick={() => {
                                 if (!window.confirm(`確定要移除「${u.name}」的報名紀錄嗎？`)) return;
+                                const targetIdx = u.originalIndex;
                                 // 同步刪除通知到 Google Sheet
                                 syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
                                   '上課日期': viewingEnrolleesCourse.displayDate,
@@ -2705,7 +2942,7 @@ export default function App() {
                                   if (newData[ds]) {
                                     newData[ds] = newData[ds].map(c => {
                                       if (c.id === viewingEnrolleesCourse.id) {
-                                        const newEnrollees = c.enrollees.filter((_, idx) => idx !== i);
+                                        const newEnrollees = c.enrollees.filter((_, idx) => idx !== targetIdx);
                                         return { ...c, enrolled: Math.max(0, (c.enrolled || 1) - 1), enrollees: newEnrollees };
                                       }
                                       return c;
@@ -2723,7 +2960,7 @@ export default function App() {
                           </td>
                         )}
                       </tr>
-                    )) : <tr><td colSpan="5" className="p-32 text-center font-black text-gray-300 text-4xl italic">目前尚無同仁報名</td></tr>}
+                    )) : <tr><td colSpan="5" className="p-32 text-center font-black text-gray-300 text-4xl italic">目前尚無符合篩選條件的同仁報名</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -2777,18 +3014,25 @@ export default function App() {
                                 </div>
                               );
                             })()}
-                            <h3 className="text-3xl font-black text-gray-800 flex items-center gap-3">
+                            <h3 className="text-3xl font-black text-gray-800 flex items-center gap-3 flex-wrap">
                               {c.topic}
-                              {c.pdfUrl && (
-                                <button onClick={() => setViewingPdfCourse(c)} title="點閱講義" className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-gradient-to-r from-red-500 to-rose-600 text-white hover:from-red-600 hover:to-rose-700 rounded-lg text-sm font-bold shadow-md transition-all hover:scale-105">
-                                  <FileText size={16} /> 講義
-                                </button>
-                              )}
-                              {c.outlineUrl && (
-                                <button onClick={() => setViewingOutlineCourse(c)} title="點閱上課大綱" className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 rounded-lg text-sm font-bold shadow-md transition-all hover:scale-105">
-                                  <BookOpen size={16} /> 大綱
-                                </button>
-                              )}
+                              <div className="flex gap-2">
+                                {c.pdfUrl && (
+                                  <button onClick={() => setViewingPdfCourse(c)} title="點閱講義" className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-gradient-to-r from-red-500 to-rose-600 text-white hover:from-red-600 hover:to-rose-700 rounded-lg text-sm font-bold shadow-md transition-all hover:scale-105">
+                                    <FileText size={16} /> 講義
+                                  </button>
+                                )}
+                                {c.outlineUrl && (
+                                  <button onClick={() => setViewingOutlineCourse(c)} title="點閱上課大綱" className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 rounded-lg text-sm font-bold shadow-md transition-all hover:scale-105">
+                                    <BookOpen size={16} /> 大綱
+                                  </button>
+                                )}
+                                {c.surveyUrl && (
+                                  <a href={c.surveyUrl} target="_blank" rel="noreferrer" title="填寫課後問卷" className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-gradient-to-r from-pink-500 to-rose-600 text-white hover:from-pink-600 hover:to-rose-700 rounded-lg text-sm font-bold shadow-md transition-all hover:scale-105">
+                                    <Send size={16} /> 問卷
+                                  </a>
+                                )}
+                              </div>
                             </h3>
                             {adminAuthenticated && (
                               <button onClick={() => { setEditingCourseId(c.id); setEditingCourseData({ topic: c.topic, instructor: c.instructor, maxCapacity: c.maxCapacity }); }} className="p-2 text-indigo-500 hover:bg-indigo-100 bg-indigo-50 rounded-full transition-colors flex items-center gap-1.5 px-3 border border-indigo-100" title="編輯課程">
@@ -2906,7 +3150,18 @@ export default function App() {
                             <div className="bg-blue-100 text-blue-700 font-black px-3 py-1 rounded-xl text-xl shadow-sm">{searchResult.electiveCourses.length} <span className="text-sm">堂</span></div>
                           </div>
                           <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
-                            {searchResult.electiveCourses.map((c, i) => <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl truncate border border-blue-200 shadow-sm flex items-center before:content-[''] before:w-1.5 before:h-1.5 before:bg-blue-400 before:rounded-full before:mr-2" title={c}>{c}</div>)}
+                            {searchResult.electiveCourses.map((c, i) => (
+                              <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl border border-blue-200 shadow-sm flex items-center justify-between gap-2" title={`${c.date} - ${c.topic}`}>
+                                <div className="flex items-center truncate min-w-0">
+                                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2 shrink-0"></div>
+                                  <span className="truncate">{c.topic}</span>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  <div title={c.attended ? "現場已報到" : "未報到"} className={`p-1 rounded-md ${c.attended ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><CheckCircle2 size={12} /></div>
+                                  <div title={c.surveyDone ? "問卷已填寫" : "問卷未填"} className={`p-1 rounded-md ${c.surveyDone ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-400'}`}><FileText size={12} /></div>
+                                </div>
+                              </div>
+                            ))}
                             {searchResult.electiveCourses.length === 0 && <span className="text-sm text-gray-400 font-bold bg-gray-50 px-4 py-3 rounded-xl border border-gray-100 text-center">尚未選修</span>}
                           </div>
                         </div>
@@ -2921,7 +3176,18 @@ export default function App() {
                             <div className="bg-orange-100 text-orange-700 font-black px-3 py-1 rounded-xl text-xl shadow-sm">{searchResult.requiredCourses.length} <span className="text-sm">堂</span></div>
                           </div>
                           <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
-                            {searchResult.requiredCourses.map((c, i) => <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl truncate border border-orange-200 shadow-sm flex items-center before:content-[''] before:w-1.5 before:h-1.5 before:bg-orange-400 before:rounded-full before:mr-2" title={c}>{c}</div>)}
+                            {searchResult.requiredCourses.map((c, i) => (
+                              <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between gap-2" title={`${c.date} - ${c.topic}`}>
+                                <div className="flex items-center truncate min-w-0">
+                                  <div className="w-1.5 h-1.5 bg-orange-400 rounded-full mr-2 shrink-0"></div>
+                                  <span className="truncate">{c.topic}</span>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  <div title={c.attended ? "現場已報到" : "未報到"} className={`p-1 rounded-md ${c.attended ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><CheckCircle2 size={12} /></div>
+                                  <div title={c.surveyDone ? "問卷已填寫" : "問卷未填"} className={`p-1 rounded-md ${c.surveyDone ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-400'}`}><FileText size={12} /></div>
+                                </div>
+                              </div>
+                            ))}
                             {searchResult.requiredCourses.length === 0 && <span className="text-sm text-gray-400 font-bold bg-gray-50 px-4 py-3 rounded-xl border border-gray-100 text-center">尚未完成必修</span>}
                           </div>
                         </div>
@@ -2936,7 +3202,18 @@ export default function App() {
                             <div className="bg-rose-100 text-rose-700 font-black px-3 py-1 rounded-xl text-xl shadow-sm">{searchResult.baiduCourses.length} <span className="text-sm">堂</span></div>
                           </div>
                           <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
-                            {searchResult.baiduCourses.map((c, i) => <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl truncate border border-rose-200 shadow-sm flex items-center before:content-[''] before:w-1.5 before:h-1.5 before:bg-rose-400 before:rounded-full before:mr-2" title={c}>{c}</div>)}
+                            {searchResult.baiduCourses.map((c, i) => (
+                              <div key={i} className="text-sm font-bold text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl border border-rose-200 shadow-sm flex items-center justify-between gap-2" title={`${c.date} - ${c.topic}`}>
+                                <div className="flex items-center truncate min-w-0">
+                                  <div className="w-1.5 h-1.5 bg-rose-400 rounded-full mr-2 shrink-0"></div>
+                                  <span className="truncate">{c.topic}</span>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  <div title={c.attended ? "現場已報到" : "未報到"} className={`p-1 rounded-md ${c.attended ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}><CheckCircle2 size={12} /></div>
+                                  <div title={c.surveyDone ? "問卷已填寫" : "問卷未填"} className={`p-1 rounded-md ${c.surveyDone ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-400'}`}><FileText size={12} /></div>
+                                </div>
+                              </div>
+                            ))}
                             {searchResult.baiduCourses.length === 0 && <span className="text-sm text-gray-400 font-bold bg-gray-50 px-4 py-3 rounded-xl border border-gray-100 text-center">尚未報名</span>}
                           </div>
                         </div>
@@ -2958,9 +3235,16 @@ export default function App() {
               {/* Header */}
               <div className="px-6 pt-6 pb-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 flex justify-between items-center shrink-0">
                 <div>
-                  <div className="text-xs font-black text-emerald-600 uppercase tracking-[0.3em] mb-1">Online Check-in</div>
-                  <h2 className="text-2xl font-black text-emerald-900 flex items-center gap-2"><CheckCircle2 size={24} className="text-emerald-500" /> 今日課程線上報到</h2>
-                  <p className="text-xs text-emerald-600 font-medium mt-1">{new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</p>
+                  <div className={`text-xs font-black uppercase tracking-[0.3em] mb-1 ${checkInModalMode === 'survey' ? 'text-pink-600' : 'text-emerald-600'}`}>
+                    {checkInModalMode === 'survey' ? 'After-course Survey' : 'Online Check-in'}
+                  </div>
+                  <h2 className={`text-2xl font-black flex items-center gap-2 ${checkInModalMode === 'survey' ? 'text-pink-900' : 'text-emerald-900'}`}>
+                    {checkInModalMode === 'survey' ? <FileText size={24} className="text-pink-500" /> : <CheckCircle2 size={24} className="text-emerald-500" />}
+                    {checkInModalMode === 'survey' ? '今日課程問卷填寫' : '今日課程線上報到'}
+                  </h2>
+                  <p className={`text-xs font-medium mt-1 ${checkInModalMode === 'survey' ? 'text-pink-600' : 'text-emerald-600'}`}>
+                    {new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+                  </p>
                 </div>
                 <button onClick={() => setShowCheckInModal(false)} className="p-3 rounded-2xl hover:bg-emerald-100 transition-all text-emerald-500"><X size={24} /></button>
               </div>
@@ -2989,9 +3273,10 @@ export default function App() {
                   onChange={e => setCheckInQuery({ ...checkInQuery, email: e.target.value })}
                   className="w-full bg-gray-50 border-2 border-gray-200 rounded-2xl px-5 py-4 text-lg font-bold text-gray-700 focus:outline-none focus:border-emerald-400 shadow-sm transition-all"
                 />
-                <button type="submit" className="w-full py-5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black rounded-2xl text-xl shadow-lg hover:shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-3 justify-center">
-                  <CheckCircle2 size={24} /> 查詢並進行報到
-                </button>
+                 <button type="submit" className={`w-full py-5 text-white font-black rounded-2xl text-xl shadow-lg active:scale-95 transition-all flex items-center gap-3 justify-center ${checkInModalMode === 'survey' ? 'bg-gradient-to-r from-pink-500 to-rose-600 hover:shadow-pink-500/30' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-500/30'}`}>
+                   {checkInModalMode === 'survey' ? <FileText size={24} /> : <CheckCircle2 size={24} />}
+                   {checkInModalMode === 'survey' ? '查詢並填寫問卷' : '查詢並進行報到'}
+                 </button>
               </form>
 
               {/* Results */}
@@ -3035,14 +3320,63 @@ export default function App() {
                             </button>
                           ) : (
                             <div className="flex flex-col gap-3">
-                              <div className="w-full py-4 bg-emerald-100 text-emerald-700 font-black rounded-2xl flex items-center justify-center gap-2 text-lg">
-                                <CheckCircle2 size={22} /> 報到完成！
-                              </div>
-                              {c.surveyUrl && (
-                                <a href={c.surveyUrl} target="_blank" rel="noreferrer"
-                                  className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 text-lg shadow-md active:scale-95 transition-all">
-                                  <FileText size={22} /> 填寫課後問卷
-                                </a>
+                              {checkInModalMode === 'checkin' ? (
+                                <>
+                                  <div className="w-full py-3 bg-emerald-100 text-emerald-700 font-black rounded-xl flex items-center justify-center gap-2 text-base">
+                                    <CheckCircle2 size={18} /> 簽到報到已完成
+                                  </div>
+                                  
+                                  <div className={`p-4 rounded-xl border-2 flex flex-col gap-3 transition-all ${userRecord?.practicalDone ? 'bg-blue-50 border-blue-200' : 'bg-white border-blue-100'}`}>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-blue-800 flex items-center gap-2">步驟 2：課堂實作確認</span>
+                                      {userRecord?.practicalDone && <span className="text-xs font-black text-blue-600 bg-white px-2 py-1 rounded-md shadow-sm">DONE</span>}
+                                    </div>
+                                    {!userRecord?.practicalDone ? (
+                                      <button 
+                                        onClick={() => handleTogglePractical(c.id, checkInQuery.email, checkInQuery.name, true)}
+                                        className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-sm transition-all text-sm"
+                                      >
+                                        點擊「我已完成實作」
+                                      </button>
+                                    ) : (
+                                      <button 
+                                        onClick={() => handleTogglePractical(c.id, checkInQuery.email, checkInQuery.name, false)}
+                                        className="w-full py-2 text-blue-400 font-bold hover:text-blue-600 text-xs"
+                                      >
+                                        (點擊撤銷實作狀態)
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className={`p-4 rounded-xl border-2 flex flex-col gap-3 transition-all ${userRecord?.surveyDone ? 'bg-pink-50 border-pink-200' : 'bg-white border-pink-100'}`}>
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-pink-800 flex items-center gap-2">課後問卷填寫</span>
+                                    {userRecord?.surveyDone && <span className="text-xs font-black text-pink-600 bg-white px-2 py-1 rounded-md shadow-sm">DONE</span>}
+                                  </div>
+                                  {c.surveyUrl ? (
+                                    <div className="flex flex-col gap-2">
+                                      <a href={c.surveyUrl} target="_blank" rel="noreferrer"
+                                        onClick={() => handleToggleSurvey(c.id, checkInQuery.email, checkInQuery.name, true)}
+                                        className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black rounded-xl flex items-center justify-center gap-2 text-sm shadow-md active:scale-95 transition-all"
+                                      >
+                                        <FileText size={18} /> 前往填寫問卷
+                                      </a>
+                                      {!userRecord?.surveyDone && (
+                                        <button 
+                                          onClick={() => handleToggleSurvey(c.id, checkInQuery.email, checkInQuery.name, true)}
+                                          className="text-[10px] text-pink-400 font-bold hover:underline"
+                                        >
+                                          若已手動填寫，點此標記完成
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="w-full py-3 bg-gray-100 text-gray-400 font-bold rounded-xl text-center text-sm">
+                                      問卷待開放（請洽講師）
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
