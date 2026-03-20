@@ -268,13 +268,43 @@ export default function App() {
     window.addEventListener('error', errorHandler);
 
     handleFetchCoursesFromCloud(true); // 初次載入立刻執行一次同步
+
+    // ① 定時輪詢：15 秒一次
     const pollInv = setInterval(() => {
       handleFetchCoursesFromCloud(true);
-    }, 30000); // 縮短為 30 秒提高同步感
+    }, 15000);
+
+    // ② 分頁切回前景時立刻刷新（使用者切回來馬上看到最新資料）
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleFetchCoursesFromCloud(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // ③ 視窗重新獲得焦點時刷新（Alt+Tab 切回）
+    const onFocus = () => handleFetchCoursesFromCloud(true);
+    window.addEventListener('focus', onFocus);
+
+    // ④ 重新上線（從離線恢復網路）時立刻抓
+    const onOnline = () => handleFetchCoursesFromCloud(true);
+    window.addEventListener('online', onOnline);
+
+    // ⑤ storage 事件：同裝置其他 tab 有人報名寫入 localStorage 時觸發
+    const onStorage = (e) => {
+      if (e.key && (e.key.startsWith('ai_courses') || e.key === 'ai_courses_sync_signal')) {
+        handleFetchCoursesFromCloud(true);
+      }
+    };
+    window.addEventListener('storage', onStorage);
 
     return () => {
       clearInterval(pollInv);
       window.removeEventListener('error', errorHandler);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('storage', onStorage);
     };
   }, []);
 
@@ -1363,8 +1393,14 @@ export default function App() {
     setSelectedCourseForEnroll(null);
     setEnrollForm({ org: '', title: '', name: '', email: '' });
 
-    // 延遲一段時間再刷新，確保 GAS 寫入完成
-    setTimeout(() => handleFetchCoursesFromCloud(true), 2000);
+    // 延遲 1 秒（等 GAS 寫入完成）後重新拉取雲端資料
+    setTimeout(() => {
+      // 廣播同裝置其他 tab 立刻同步（觸發 storage 事件）
+      try {
+        localStorage.setItem('ai_courses_sync_signal', Date.now().toString());
+      } catch (_) {}
+      handleFetchCoursesFromCloud(true);
+    }, 1000);
   };
 
   const handleWishSubmit = (e) => {
