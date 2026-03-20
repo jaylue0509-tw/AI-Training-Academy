@@ -598,16 +598,21 @@ export default function App() {
               const cloudCount = parseInt(c['報名人數']) || 0;
               const existing = mergedMap.get(key);
 
+              const cloudPdf = (c['教材講義'] || '').toString().trim();
+              const cloudOutline = (c['上課大綱'] || '').toString().trim();
+              const cloudSurvey = (c['問卷連結'] || c['課後問卷'] || '').toString().trim();
+              const cloudVideo = (c['影片連結'] || c['影片上傳'] || '').toString().trim();
+
               mergedMap.set(key, {
                 ...(existing || { id: Date.now() + Math.random() }),
-                topic, 
+                topic,
                 summary,
                 instructor: (c['講師'] || existing?.instructor || '待確認').toString().trim(),
                 timeSlot: (c['上課時間'] || existing?.timeSlot || '').toString().trim(),
-                videoUrl: (c['影片連結'] || c['影片上傳'] || existing?.videoUrl || '').toString().trim(),
-                pdfUrl: (c['教材講義'] || existing?.pdfUrl || '').toString().trim(),
-                outlineUrl: (c['上課大綱'] || existing?.outlineUrl || '').toString().trim(),
-                surveyUrl: (c['問卷連結'] || c['課後問卷'] || existing?.surveyUrl || '').toString().trim(),
+                videoUrl: cloudVideo || existing?.videoUrl || '',
+                pdfUrl: cloudPdf || existing?.pdfUrl || '',
+                outlineUrl: cloudOutline || existing?.outlineUrl || '',
+                surveyUrl: cloudSurvey || existing?.surveyUrl || '',
                 enrollees: currentEnrollees,
                 enrolled: Math.max(cloudCount, currentEnrollees.length),
                 displayDate: rawDate.toString() || existing?.displayDate || dStr,
@@ -774,20 +779,25 @@ export default function App() {
           const enrolleeKey = `${normalizeTopic(topic)}_${dateStr}`;
           const cloudEnrollees = enrollMap[enrolleeKey] || [];
           
+          // 雲端有實際值才覆蓋，否則保留本地已有的連結
           const existing = mergedMap.get(key);
+          const cloudPdfUrl = (row.c[pdfI]?.v || '').toString().trim();
+          const cloudOutlineUrl = (row.c[outlineI]?.v || '').toString().trim();
+          const cloudSurveyUrl = (row.c[surveyUrlI]?.v || '').toString().trim();
+          const cloudVideoUrl = (row.c[videoI]?.v || '').toString().trim();
           mergedMap.set(key, {
             ...(existing || { id: Date.now() + Math.random(), enrollees: [] }),
             topic: topic.trim(),
             summary: summary || (existing ? existing.summary : '【課程】'),
-            instructor: (row.c[instructorI] ? row.c[instructorI].v : (existing ? existing.instructor : '待確認'))?.toString().trim(),
-            timeSlot: row.c[timeSlotI] ? row.c[timeSlotI].v : (existing ? existing.timeSlot : ''),
-            videoUrl: row.c[videoI] ? row.c[videoI].v : (existing ? existing.videoUrl : ''),
-            pdfUrl: row.c[pdfI] ? row.c[pdfI].v : (existing ? existing.pdfUrl : ''),
-            outlineUrl: row.c[outlineI] ? row.c[outlineI].v : (existing ? existing.outlineUrl : ''),
-            surveyUrl: row.c[surveyUrlI] ? row.c[surveyUrlI].v : (existing ? existing.surveyUrl : ''),
+            instructor: (row.c[instructorI]?.v?.toString().trim()) || (existing?.instructor) || '待確認',
+            timeSlot: (row.c[timeSlotI]?.v?.toString().trim()) || (existing?.timeSlot) || '',
+            videoUrl: cloudVideoUrl || existing?.videoUrl || '',
+            pdfUrl: cloudPdfUrl || existing?.pdfUrl || '',
+            outlineUrl: cloudOutlineUrl || existing?.outlineUrl || '',
+            surveyUrl: cloudSurveyUrl || existing?.surveyUrl || '',
             enrollees: cloudEnrollees,
             enrolled: Math.max(cloudEnrolledCount, cloudEnrollees.length),
-            displayDate: displayDate || (existing ? existing.displayDate : dateStr.replace(/-/g, '/')),
+            displayDate: displayDate || existing?.displayDate || dateStr.replace(/-/g, '/'),
             dateStr
           });
         });
