@@ -169,10 +169,41 @@ const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
 };
 
 export default function App() {
+
   const [coursesData, setCoursesData] = useState(() => {
     try {
       const saved = localStorage.getItem('ai_courses_v12');
       const base = JSON.parse(JSON.stringify(INITIAL_COURSES));
+
+      // 若 v12 無資料，嘗試繼承舊版連結（保留管理員設定的 pdfUrl/outlineUrl/surveyUrl）
+      const legacyRaw = (!saved || saved === 'null')
+        ? (localStorage.getItem('ai_courses_v11') || localStorage.getItem('ai_courses_v10'))
+        : null;
+
+      if (legacyRaw) {
+        try {
+          const legacyData = JSON.parse(legacyRaw);
+          // 把舊版已有的連結合併進 base
+          Object.keys(legacyData || {}).forEach(date => {
+            (legacyData[date] || []).forEach(old => {
+              if (!old) return;
+              Object.keys(base).forEach(bd => {
+                base[bd].forEach(bc => {
+                  if (bc.topic === old.topic) {
+                    if (old.pdfUrl) bc.pdfUrl = old.pdfUrl;
+                    if (old.outlineUrl) bc.outlineUrl = old.outlineUrl;
+                    if (old.surveyUrl) bc.surveyUrl = old.surveyUrl;
+                    if (old.videoUrl) bc.videoUrl = old.videoUrl;
+                    if (old.timeSlot) bc.timeSlot = old.timeSlot;
+                  }
+                });
+              });
+            });
+          });
+        } catch (_) {}
+        return base;
+      }
+
       if (saved && saved !== 'null') {
         const savedData = JSON.parse(saved);
         if (!savedData || typeof savedData !== 'object') return base;
@@ -419,6 +450,7 @@ export default function App() {
   const [calendarAdminEdit, setCalendarAdminEdit] = useState(null);
   const [calendarAddCourse, setCalendarAddCourse] = useState(null); // { dateStr, dateKey }
   const [globalStatCourseId, setGlobalStatCourseId] = useState('all');
+  const [tableLevelFilter, setTableLevelFilter] = useState('all'); // 'all' | '必修' | '選修' | '初級' | '中級' | '高級'
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [enrollForm, setEnrollForm] = useState({ org: '', title: '', name: '', email: '' });
   const [wishForm, setWishForm] = useState({ content: '', org: '', title: '', name: '', email: '' });
@@ -1950,6 +1982,16 @@ export default function App() {
             <div className="flex-1 flex flex-col xl:flex-row gap-5 min-h-0">
               <div className="flex-1 bg-white/60 border border-orange-100 rounded-3xl overflow-hidden shadow-sm flex flex-col relative">
                 <div className="hidden md:block overflow-x-auto overflow-y-auto custom-scrollbar flex-1">
+                  {/* 等級筛選按鈕 */}
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-1 flex-wrap">
+                    <span className="text-xs font-bold text-gray-500 mr-1">等級筛選：</span>
+                    {[{k:'all',label:'全部',cls:'bg-gray-700 text-white'},{k:'必修',label:'必修',cls:'bg-purple-600 text-white'},{k:'選修',label:'選修',cls:'bg-indigo-500 text-white'},{k:'初級',label:'初級',cls:'bg-emerald-500 text-white'},{k:'中級',label:'中級',cls:'bg-amber-500 text-white'},{k:'高級',label:'高級',cls:'bg-rose-600 text-white'}].map(({k,label,cls}) => (
+                      <button key={k} onClick={() => setTableLevelFilter(k)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                          tableLevelFilter === k ? cls + ' shadow-md scale-105' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                        }`}>{label}</button>
+                    ))}
+                  </div>
                   <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead className="bg-orange-50/80 backdrop-blur-md sticky top-0 z-20 shadow-sm">
                       <tr>
@@ -1963,6 +2005,13 @@ export default function App() {
                     <tbody>
                       {allCoursesList
                         .filter(c => globalStatCourseId === 'all' || c.id.toString() === globalStatCourseId)
+                        .filter(c => {
+                          if (tableLevelFilter === 'all') return true;
+                          if (tableLevelFilter === '必修') return (c.summary||'').includes('必修');
+                          if (tableLevelFilter === '選修') return (c.summary||'').includes('選修');
+                          const lvl = getCourseLevelStatus(c).text;
+                          return lvl === tableLevelFilter;
+                        })
                         .map((c, i) => {
                           const isFull = c.enrolled >= c.maxCapacity;
                           const match = c.summary.match(/【(.*?)】/);
@@ -1992,7 +2041,7 @@ export default function App() {
                                       <BookOpen size={14} /> 大綱
                                     </button>
                                   )}
-                                  {adminAuthenticated && c.surveyUrl && (
+                                  {c.surveyUrl && (
                                     <a href={c.surveyUrl} target="_blank" rel="noreferrer" title="填寫問卷" className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-gradient-to-r from-pink-500 to-rose-600 text-white hover:from-pink-600 hover:to-rose-700 rounded-lg text-xs font-bold shadow-sm transition-all hover:scale-105">
                                       <Send size={14} /> 問卷
                                     </a>
@@ -2034,6 +2083,13 @@ export default function App() {
                 <div className="block md:hidden flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
                   {allCoursesList
                     .filter(c => globalStatCourseId === 'all' || c.id.toString() === globalStatCourseId)
+                    .filter(c => {
+                      if (tableLevelFilter === 'all') return true;
+                      if (tableLevelFilter === '必修') return (c.summary||'').includes('必修');
+                      if (tableLevelFilter === '選修') return (c.summary||'').includes('選修');
+                      const lvl = getCourseLevelStatus(c).text;
+                      return lvl === tableLevelFilter;
+                    })
                     .map(c => {
                       const isFull = c.enrolled >= c.maxCapacity;
                       const lvl = getCourseLevelStatus(c);
@@ -2066,7 +2122,7 @@ export default function App() {
                               <div className="flex gap-2 shrink-0">
                                 {c.pdfUrl && <button onClick={() => setViewingPdfCourse(c)} className="px-2 py-1 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><FileText size={12} />講義</button>}
                                 {c.outlineUrl && <button onClick={() => setViewingOutlineCourse(c)} className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><BookOpen size={12} />大綱</button>}
-                                {adminAuthenticated && c.surveyUrl && <a href={c.surveyUrl} target="_blank" rel="noreferrer" className="px-2 py-1 bg-pink-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><Send size={12} />問卷</a>}
+                                {c.surveyUrl && <a href={c.surveyUrl} target="_blank" rel="noreferrer" className="px-2 py-1 bg-pink-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"><Send size={12} />問卷</a>}
                                 <button
                                   disabled={isFull || !isCourseCurrentMonthReal}
                                   onClick={() => { setSelectedCourseForEnroll(c); setEnrollForm({ org: '', title: '', name: '', email: '' }); }}
