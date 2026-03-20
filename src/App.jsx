@@ -585,8 +585,27 @@ export default function App() {
             });
           });
 
+          // 如果課程資料為空但有報名資料，傍新 enrolled 計數和 enrollees
           if (!res.courses || !res.courses.length) {
-            console.warn('雲端資料為空，暫不更新前台課程表');
+            if (res.enrollments && res.enrollments.length > 0) {
+              // 只更新人數和報名名單，不動課程資訊
+              setCoursesData(prev => {
+                const newData = { ...prev };
+                Object.keys(newData).forEach(ds => {
+                  newData[ds] = (newData[ds] || []).map(c => {
+                    // 找對應的報名 Map key
+                    const dStr = normalizeDate(c.displayDate || ds);
+                    const key = `${normalizeTopic(c.topic)}_${dStr}`;
+                    const updatedEnrollees = enrollMap[key];
+                    if (updatedEnrollees !== undefined) {
+                      return { ...c, enrollees: updatedEnrollees, enrolled: updatedEnrollees.length || c.enrolled };
+                    }
+                    return c;
+                  });
+                });
+                return newData;
+              });
+            }
             if (!silent) showToast('✅ 雲端連線正常，查無新增課程');
             return;
           }
@@ -644,7 +663,10 @@ export default function App() {
                 outlineUrl: cloudOutline || existing?.outlineUrl || '',
                 surveyUrl: cloudSurvey || existing?.surveyUrl || '',
                 enrollees: currentEnrollees,
-                enrolled: Math.max(cloudCount, currentEnrollees.length),
+                // 直接用報名表的實際人數，避免課程總表「報名人數」延遲更新的問題
+                enrolled: currentEnrollees.length > 0
+                  ? currentEnrollees.length
+                  : Math.max(cloudCount, existing?.enrolled || 0),
                 displayDate: rawDate.toString() || existing?.displayDate || dStr,
                 dateStr: dStr
               });
@@ -826,7 +848,10 @@ export default function App() {
             outlineUrl: cloudOutlineUrl || existing?.outlineUrl || '',
             surveyUrl: cloudSurveyUrl || existing?.surveyUrl || '',
             enrollees: cloudEnrollees,
-            enrolled: Math.max(cloudEnrolledCount, cloudEnrollees.length),
+            // 直接用報名表人數，避免課程總表延遲寫入問題
+            enrolled: cloudEnrollees.length > 0
+              ? cloudEnrollees.length
+              : Math.max(cloudEnrolledCount, existing?.enrolled || 0),
             displayDate: displayDate || existing?.displayDate || dateStr.replace(/-/g, '/'),
             dateStr
           });
@@ -1393,14 +1418,16 @@ export default function App() {
     setSelectedCourseForEnroll(null);
     setEnrollForm({ org: '', title: '', name: '', email: '' });
 
-    // 延遲 1 秒（等 GAS 寫入完成）後重新拉取雲端資料
+    // 延遲 3 秒（讓 GAS 有時間完成寫入）後重新拉取雲端資料
     setTimeout(() => {
       // 廣播同裝置其他 tab 立刻同步（觸發 storage 事件）
       try {
         localStorage.setItem('ai_courses_sync_signal', Date.now().toString());
       } catch (_) {}
       handleFetchCoursesFromCloud(true);
-    }, 1000);
+    }, 3000);
+    // 再多等一次，確保跨裝置也能看到
+    setTimeout(() => handleFetchCoursesFromCloud(true), 8000);
   };
 
   const handleWishSubmit = (e) => {
