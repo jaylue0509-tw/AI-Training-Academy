@@ -591,15 +591,29 @@ export default function App() {
             if (!name || !email || !topic || !date) return;
             const key = `${normalizeTopic(topic)}_${date}`;
             if (!enrollMap[key]) enrollMap[key] = [];
-            enrollMap[key].push({
-              org: e['事業體'] || '',
-              title: e['職稱'] || '',
-              name,
-              email,
-              attended: (e['報到狀態'] || '').includes('已報到'),
-              practicalDone: (e['實作狀態'] || '').includes('已完成'),
-              surveyDone: (e['問卷狀態'] || '').includes('已完成')
-            });
+            const existingIdx = enrollMap[key].findIndex(u => u.email === email && u.name === name);
+            const isAttended = (e['報到狀態'] || '').includes('已報到');
+            const isPracticalDone = (e['實作狀態'] || '').includes('已完成');
+            const isSurveyDone = (e['問卷狀態'] || '').includes('已完成');
+
+            if (existingIdx !== -1) {
+              enrollMap[key][existingIdx] = {
+                ...enrollMap[key][existingIdx],
+                attended: enrollMap[key][existingIdx].attended || isAttended,
+                practicalDone: enrollMap[key][existingIdx].practicalDone || isPracticalDone,
+                surveyDone: enrollMap[key][existingIdx].surveyDone || isSurveyDone
+              };
+            } else {
+              enrollMap[key].push({
+                org: e['事業體'] || '',
+                title: e['職稱'] || '',
+                name,
+                email,
+                attended: isAttended,
+                practicalDone: isPracticalDone,
+                surveyDone: isSurveyDone
+              });
+            }
           });
 
           // 如果課程資料為空但有報名資料，傍新 enrolled 計數和 enrollees
@@ -770,12 +784,23 @@ export default function App() {
           if (action === 'DELETE') {
             enrollMap[key] = enrollMap[key].filter(u => u.email !== email);
           } else if (name) {
-            if (!enrollMap[key].some(u => u.email === email)) {
+            const isPracticalDone = (row.c[eIdx['實作狀態']]?.v || '').includes('已完成');
+            const isSurveyDone = (row.c[eIdx['問卷狀態']]?.v || '').includes('已完成');
+            const existingIdx = enrollMap[key].findIndex(u => u.email === email && u.name === name);
+
+            if (existingIdx !== -1) {
+              enrollMap[key][existingIdx] = {
+                ...enrollMap[key][existingIdx],
+                attended: enrollMap[key][existingIdx].attended || isAttended,
+                practicalDone: enrollMap[key][existingIdx].practicalDone || isPracticalDone,
+                surveyDone: enrollMap[key][existingIdx].surveyDone || isSurveyDone
+              };
+            } else {
               enrollMap[key].push({ 
                 org, title, name, email, 
                 attended: isAttended,
-                practicalDone: (row.c[eIdx['實作狀態']]?.v || '').includes('已完成'),
-                surveyDone: (row.c[eIdx['問卷狀態']]?.v || '').includes('已完成')
+                practicalDone: isPracticalDone,
+                surveyDone: isSurveyDone
               });
             }
           }
@@ -1250,7 +1275,11 @@ export default function App() {
     });
 
     showToast("✅ 線上報到成功！請繼續完成「實作」與「問卷」確認。");
-    setTimeout(() => handleFetchCoursesFromCloud(true), 1500);
+    setTimeout(() => {
+      try { localStorage.setItem('ai_courses_sync_signal', Date.now().toString()); } catch (_) {}
+      handleFetchCoursesFromCloud(true);
+    }, 3000);
+    setTimeout(() => handleFetchCoursesFromCloud(true), 8000);
   };
 
   const handleTogglePractical = (courseId, email, name, status) => {
@@ -1308,6 +1337,12 @@ export default function App() {
         '實作狀態': status ? '✅ 已完成' : '❌ 未完成',
         '更新時間': new Date().toLocaleString()
       }, setSyncStatus);
+
+      setTimeout(() => {
+        try { localStorage.setItem('ai_courses_sync_signal', Date.now().toString()); } catch (_) {}
+        handleFetchCoursesFromCloud(true);
+      }, 3000);
+      setTimeout(() => handleFetchCoursesFromCloud(true), 8000);
     }
   };
 
@@ -1364,6 +1399,12 @@ export default function App() {
         '問卷狀態': status ? '✅ 已完成' : '❌ 未完成',
         '更新時間': new Date().toLocaleString()
       }, setSyncStatus);
+
+      setTimeout(() => {
+        try { localStorage.setItem('ai_courses_sync_signal', Date.now().toString()); } catch (_) {}
+        handleFetchCoursesFromCloud(true);
+      }, 3000);
+      setTimeout(() => handleFetchCoursesFromCloud(true), 8000);
     }
   };
 
