@@ -5,107 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/AI-Training-Academy/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ai-training-academy</title>
-    <script type="module" crossorigin src="/AI-Training-Academy/assets/index-CdllIUb6.js"></script>
-    <link rel="stylesheet" crossorigin href="/AI-Training-Academy/assets/index-ClwWLgdH.css">
+    <script type="module" crossorigin src="/AI-Training-Academy/assets/index-Ui_g9lLO.js"></script>
+    <link rel="stylesheet" crossorigin href="/AI-Training-Academy/assets/index-ByENcDok.css">
   </head>
   <body>
     <div id="root"></div>
-    <style>
-      .dynamic-enroll-alert {
-        background-color: #fff3cd !important;
-        border: 1px solid #ffeeba !important;
-        color: #856404 !important;
-        padding: 12px !important;
-        margin: 15px 0 !important;
-        border-radius: 6px !important;
-        font-weight: bold !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
-        display: block !important;
-      }
-      .btn-limit-locked {
-        background-color: #6c757d !important;
-        border-color: #6c757d !important;
-        pointer-events: none !important;
-        opacity: 0.7 !important;
-        cursor: not-allowed !important;
-      }
-    </style>
-    
-    <script>
-    // 1. 在此貼上你剛剛在 Apps Script 取得的部署網址
-    const COURSE_API = "https://script.google.com/macros/s/AKfycbyPa_x0Y7ihz6PY_Y9M-qcVQESw_duaRESrms6vYBLdjtZdIo01YzpGOK2ISoOZrslXSQ/exec";
-    
-    let dynamicCoursesData = null;
-    let isFetching = false;
-    
-    async function checkDynamicStatus() {
-      if (COURSE_API === "將你剛才部署的網址貼在這裡") return;
-      
-      if (!dynamicCoursesData && !isFetching) {
-        isFetching = true;
-        try {
-          const response = await fetch(COURSE_API);
-          dynamicCoursesData = await response.json();
-        } catch (e) {
-          console.log("正在同步外掛課程資料...");
-        }
-        isFetching = false;
-      }
-    
-      if (dynamicCoursesData) {
-        dynamicCoursesData.forEach(course => {
-          const name = course["課程名稱"];
-          const current = parseInt(course["目前人數"]) || 0;
-          const limit = parseInt(course["報名上限"]) || 0;
-    
-          if (limit > 0) {
-            // 自動尋找 React 動態渲染出的標題
-            const titles = document.querySelectorAll('h1, h2, h3, h4, .title, .course-name');
-            
-            titles.forEach(title => {
-              if (title.innerText.trim().includes(name.trim())) {
-                const card = title.closest('.rounded-3xl') || title.closest('div'); 
-                
-                // 🔥 同步覆寫卡片上的「狀態：X/Y」數字
-                const statusSpans = card.querySelectorAll('span');
-                statusSpans.forEach(span => {
-                  if (span.innerText.includes(current + '/') || span.innerText.match(/\d+\//)) {
-                    const parts = span.innerText.split('/');
-                    if (parts.length === 2 && parseInt(parts[1]) !== limit) {
-                       span.innerText = `${parts[0]}/${limit}`;
-                       if (current >= limit) span.className = 'text-red-500';
-                       else span.className = 'text-blue-500';
-                    }
-                  }
-                });
-    
-                if (current >= limit) {
-                  const btn = card.querySelector('button');
-                  if (btn && !btn.classList.contains('btn-limit-locked') && btn.innerText.includes('我要報名')) {
-                    btn.innerText = "名額已滿 (準備加開中)";
-                    btn.classList.add('btn-limit-locked');
-                  }
-      
-                  if (!card.querySelector('.dynamic-enroll-alert')) {
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'dynamic-enroll-alert';
-                    alertDiv.innerHTML = `⚠️ 報名人數已達上限 (${limit}人)！<br>我們確定會「加開場次」，請留意後續通知。`;
-                    title.parentNode.insertBefore(alertDiv, title.nextSibling);
-                  }
-                }
-              }
-            });
-          }
-        });
-      }
-    }
-    
-    // React 畫面經常動態更新，使用 MutationObserver 確保動態彈出的 Modal 也能生效
-    const observer = new MutationObserver(() => { checkDynamicStatus(); });
-    observer.observe(document.body, { childList: true, subtree: true });
-    
-    document.addEventListener('DOMContentLoaded', checkDynamicStatus);
-    </script>
   </body>
 </html>
