@@ -65,7 +65,7 @@
             
             titles.forEach(title => {
               if (title.innerText.trim().includes(name.trim())) {
-                const card = title.closest('div'); 
+                const card = title.closest('.rounded-3xl') || title.closest('div'); 
                 
                 // 🔥 同步覆寫卡片上的「狀態：X/Y」數字
                 const statusSpans = card.querySelectorAll('span');
