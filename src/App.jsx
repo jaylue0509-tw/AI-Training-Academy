@@ -142,26 +142,35 @@ const normalizeDate = (d) => {
 };
 
 // --- 同步至 Google Sheets (需搭配 Apps Script) ---
-const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
-  const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg/exec';
-  if (onStatusChange) onStatusChange('syncing');
-  try {
-    const params = new URLSearchParams();
-    params.append('sheetId', sheetId);
-    Object.keys(data).forEach(key => params.append(key, data[key]));
+// --- 同步至 Google Sheets (改由 Cloudflare Worker 中繼) ---
+  const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
+    // 1. 請確認這是你 Cloudflare 上的網址
+    const WORKER_URL = 'https://ai-academy-proxy.jaylue0509.workers.dev'; 
+    // 2. 這是你原本的 GAS ID
+    const GAS_ID = 'AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg';
+    
+    const PROXY_URL = `${WORKER_URL}?id=${GAS_ID}`;
 
-    // 使用非同步方式發送，不攔截 UI
-    fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString()
-    }).then(() => {
+    if (onStatusChange) onStatusChange('syncing');
+
+    try {
+      const params = new URLSearchParams();
+      params.append('sheetId', sheetId);
+      Object.keys(data).forEach(key => params.append(key, data[key]));
+
+      const response = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(params))
+      });
+
       if (onStatusChange) onStatusChange('idle');
-    }).catch(err => {
+      console.log('透過 Worker 同步成功');
+    } catch (err) {
       console.error('即時同步發生錯誤', err);
       if (onStatusChange) onStatusChange('error');
-    });
+    }
+  };
   } catch (error) {
     console.error('即時同步發送前錯誤', error);
     if (onStatusChange) onStatusChange('error');
