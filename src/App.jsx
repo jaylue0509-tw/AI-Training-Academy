@@ -668,9 +668,8 @@ export default function App() {
             const nTopic = normalizeTopic(topic);
             const key = `${nTopic}_${date}`;
             
-            // 若該報名紀錄的日期對應不到任何現有的同一主題課程，標記為孤兒 (很可能是老師去改了課程日期)
-            const targetMap = cloudExactKeys.has(key) ? enrollMap : orphanedMap;
-            const mapKey = cloudExactKeys.has(key) ? key : nTopic;
+            const targetMap = enrollMap;
+            const mapKey = key;
 
             if (!targetMap[mapKey]) targetMap[mapKey] = [];
             const existingIdx = targetMap[mapKey].findIndex(u => {
@@ -794,13 +793,6 @@ export default function App() {
 
               const cloudCount = parseInt(c['報名人數']) || 0;
               let baseCloudEnrollees = enrollMap[key] || [];
-
-              // ✅ 自動救援機制：如果這是該主題的場次，把因為改日期而變成孤兒的報名單合併進來
-              const nTopic = normalizeTopic(topic);
-              if (!rescuedOrphans.has(nTopic) && orphanedMap[nTopic]) {
-                baseCloudEnrollees = [...baseCloudEnrollees, ...orphanedMap[nTopic]];
-                rescuedOrphans.add(nTopic);
-              }
 
               // ✅ Pending 合併：將近 5 分鐘內剛報名 (尚未同步回雲端) 的本地快取補回去
               const PENDING_TTL = 5 * 60 * 1000;
@@ -949,8 +941,8 @@ export default function App() {
           const nDate = normalizeDate(rawDate);
           const key = `${nTopic}_${nDate}`;
 
-          const targetMap = cloudExactKeys.has(key) ? enrollMap : orphanedMap;
-          const mapKey = cloudExactKeys.has(key) ? key : nTopic;
+          const targetMap = enrollMap;
+          const mapKey = key;
 
           if (!targetMap[mapKey]) targetMap[mapKey] = [];
 
@@ -1074,13 +1066,6 @@ export default function App() {
           // 比對全站報名清單 Map (使用標準化 Key)
           const enrolleeKey = `${normalizeTopic(topic)}_${dateStr}`;
           let cloudEnrollees = enrollMap[enrolleeKey] || [];
-          
-          // 自動救援：合併因為日期更改而變成孤兒的報名
-          const nTopic = normalizeTopic(topic);
-          if (!rescuedOrphans.has(nTopic) && orphanedMap[nTopic]) {
-            cloudEnrollees = [...cloudEnrollees, ...orphanedMap[nTopic]];
-            rescuedOrphans.add(nTopic);
-          }
           
           // ✅ Pending 合併：將雲端尚未確認的本地報名 merge 回來
           const existing = mergedMap.get(key);
