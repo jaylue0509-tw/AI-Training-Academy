@@ -515,6 +515,22 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'error'
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  // 報名緩衝區：記錄剛報名但 GAS 尚未寫入雲端的資料，TTL 5 分鐘
+  const pendingEnrollmentsRef = useRef([]); // [{ courseKey, enrollee, addedAt }]
+  // 防並發 cloud fetch 對沖
+  const isFetchingRef = useRef(false);
+
+  // ---- 新功能 Modal States ----
+  // 作業繳交 Modal: { courseId, dateStr, topic, displayDate, email, name, currentLink }
+  const [homeworkModal, setHomeworkModal] = useState(null);
+  const [homeworkLink, setHomeworkLink] = useState('');
+  // 心得填寫 Modal: { courseId, dateStr, topic, displayDate, email, name, currentReflection }
+  const [reflectionModal, setReflectionModal] = useState(null);
+  const [reflectionText, setReflectionText] = useState('');
+  // 取消報名確認 Modal: { courseId, dateStr, topic, displayDate, email, name }
+  const [cancelConfirm, setCancelConfirm] = useState(null);
+  // 後台「未完成」篩選
+  const [adminIncompleteFilter, setAdminIncompleteFilter] = useState('all'); // 'all'|'no_practical'|'no_survey'|'no_attend'
 
   const getEmbedUrl = (url) => {
     if (!url) return '';
@@ -569,8 +585,49 @@ export default function App() {
     }
   }, [viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ========== ✅ 全域連動：coursesData 任何變動都自動更新所有舊快照 UI state ==========
+
+  // 1. 後台「名單」面板 — 保持最新 enrollees 與計數
+  useEffect(() => {
+    if (!viewingEnrolleesCourse) return;
+    const updated = allCoursesList.find(c => c.id === viewingEnrolleesCourse.id);
+    if (updated) setViewingEnrolleesCourse(updated);
+  }, [coursesData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 2. 報名 Modal — 保持最新 enrolled / enrollees（防止重複報名檢查失效）
+  useEffect(() => {
+    if (!selectedCourseForEnroll) return;
+    const updated = allCoursesList.find(c => c.id === selectedCourseForEnroll.id);
+    if (updated) setSelectedCourseForEnroll(prev => ({ ...updated, dateStr: prev.dateStr, displayDate: prev.displayDate }));
+  }, [coursesData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 3. 月曆彈窗 — 保持課程資料最新
+  useEffect(() => {
+    if (!selectedDayCourses) return;
+    const dateKey = selectedDayCourses.date
+      .replace(/年/, '-').replace(/月/, '-').replace(/日/, '');
+    const freshCourses = coursesData[dateKey] ||
+      Object.values(coursesData).flat().filter(c => c.displayDate === selectedDayCourses.date);
+    if (freshCourses && freshCourses.length > 0)
+      setSelectedDayCourses(prev => ({ ...prev, courses: freshCourses }));
+  }, [coursesData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 4. 線上報到結果 — 同步最新 enrollees
+  useEffect(() => {
+    if (!Array.isArray(checkInResult)) return;
+    const updated = checkInResult.map(c => allCoursesList.find(f => f.id === c.id) || c);
+    const changed = updated.some((c, i) =>
+      c.enrolled !== checkInResult[i]?.enrolled ||
+      c.enrollees?.length !== checkInResult[i]?.enrollees?.length
+    );
+    if (changed) setCheckInResult(updated);
+  }, [coursesData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ✅ 從課程總表 Google Sheet 拉取最新課程資料（講師、時間、影片連結）並同步報名名單
   const handleFetchCoursesFromCloud = async (silent = false) => {
+    // ✅ 防並發：上一次 fetch 尚在執行中則跳過
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       if (!silent) showToast('⏳ 正在執行 v11 雲端同步協定...');
       
@@ -579,34 +636,59 @@ export default function App() {
       if (resp.ok) {
         const res = await resp.json();
         if (!res.error) {
+          // 先建立目前雲端所有的活動課程 Session Keys
+          const cloudExactKeys = new Set();
+          (res.courses || []).forEach(c => {
+            const tc = c['課程主題 / 類別'] || c['課程主題'] || '';
+            const topic = tc.split('【')[0].trim();
+            const dStr = normalizeDate(c['上課日期'] || '');
+            if (topic && dStr) cloudExactKeys.add(`${normalizeTopic(topic)}_${dStr}`);
+          });
+
           // 處理報名 Map
           const enrollMap = {};
+          const orphanedMap = {};
           (res.enrollments || []).forEach(e => {
+            if (!e || typeof e !== 'object') return;
             const tc = e['課程主題 / 類別'] || e['課程主題/類別'] || '';
             const topic = tc.split('【')[0].trim();
             const date = normalizeDate(e['上課日期']);
-            const name = (e['報名姓名'] || '').trim();
-            const email = (e['EMAIL'] || e['公司信箱'] || '').toLowerCase().trim();
-            // ⛔ 跳過沒有姓名或信箱的空白列（之前批次同步產生的假資料）
-            if (!name || !email || !topic || !date) return;
-            const key = `${normalizeTopic(topic)}_${date}`;
-            if (!enrollMap[key]) enrollMap[key] = [];
-            const existingIdx = enrollMap[key].findIndex(u => u.email === email && u.name === name);
-            const isAttended = (e['報到狀態'] || '').includes('已報到');
-            const isPracticalDone = (e['實作狀態'] || '').includes('已完成');
-            const isSurveyDone = (e['問卷狀態'] || '').includes('已完成');
+            const name = String(e['報名姓名'] || '').trim();
+            const email = String(e['EMAIL'] || e['公司信箱'] || '').toLowerCase().trim();
+            const org = String(e['事業體'] || '').trim();
+
+            // ⛔ 只要有姓名、主題和日期就視為有效報名，不強制要求信箱
+            if (!name || !topic || !date) return;
+            
+            const attendedVal = e['報到是否成功'] || e['報到狀態'] || e['報到'] || e['attended'] || '';
+            const isAttended = typeof attendedVal === 'string' ? (attendedVal.includes('已報到') || attendedVal.toLowerCase() === 'true') : !!attendedVal;
+            const isPracticalDone = e['作業完成'] || e['practicalDone'] || e['實作完成'] || false;
+            const isSurveyDone = e['問卷完成'] || e['surveyDone'] || e['課後問卷'] || false;
+
+            const nTopic = normalizeTopic(topic);
+            const key = `${nTopic}_${date}`;
+            
+            // 若該報名紀錄的日期對應不到任何現有的同一主題課程，標記為孤兒 (很可能是老師去改了課程日期)
+            const targetMap = cloudExactKeys.has(key) ? enrollMap : orphanedMap;
+            const mapKey = cloudExactKeys.has(key) ? key : nTopic;
+
+            if (!targetMap[mapKey]) targetMap[mapKey] = [];
+            const existingIdx = targetMap[mapKey].findIndex(u => {
+              if (email && u.email) return u.email === email;
+              return u.name === name && u.org === org;
+            });
 
             if (existingIdx !== -1) {
-              enrollMap[key][existingIdx] = {
-                ...enrollMap[key][existingIdx],
-                attended: enrollMap[key][existingIdx].attended || isAttended,
-                practicalDone: enrollMap[key][existingIdx].practicalDone || isPracticalDone,
-                surveyDone: enrollMap[key][existingIdx].surveyDone || isSurveyDone
+              targetMap[mapKey][existingIdx] = {
+                ...targetMap[mapKey][existingIdx],
+                attended: targetMap[mapKey][existingIdx].attended || isAttended,
+                practicalDone: targetMap[mapKey][existingIdx].practicalDone || isPracticalDone,
+                surveyDone: targetMap[mapKey][existingIdx].surveyDone || isSurveyDone
               };
             } else {
-              enrollMap[key].push({
-                org: e['事業體'] || '',
-                title: e['職稱'] || '',
+              targetMap[mapKey].push({
+                org,
+                title: String(e['職稱'] || '').trim(),
                 name,
                 email,
                 attended: isAttended,
@@ -643,19 +725,38 @@ export default function App() {
 
           setCoursesData(prev => {
             const mergedMap = new Map();
-            // 💡 取得雲端主題清單，用於清理舊日期資料
-            const cloudTopics = new Set((res.courses || []).map(c => normalizeTopic(c['課程主題'] || c['課程主題 / 類別'] || '')));
-
+            // 建立本地先有資料的 Map
             Object.keys(prev).forEach(ds => {
               (prev[ds] || []).forEach(c => {
-                const nTopic = normalizeTopic(c.topic);
-                if (cloudTopics.has(nTopic)) return; // 避免舊日期重複出現
                 const dStr = normalizeDate(c.displayDate || ds);
-                mergedMap.set(`${nTopic}_${dStr}`, { ...c, dateStr: dStr });
+                const key = `${normalizeTopic(c.topic)}_${dStr}`;
+                mergedMap.set(key, { ...c, dateStr: dStr });
               });
             });
 
+            // 為了處理如果「雲端修改了日期」，我們需要把舊日期的紀錄刪除，
+            // 找出所有雲端目前的 (topic, date)
+            const cloudExactKeys = new Set();
+            (res.courses || []).forEach(c => {
+              const tc = c['課程主題 / 類別'] || c['課程主題'] || '';
+              const topic = tc.split('【')[0].trim();
+              const dStr = normalizeDate(c['上課日期'] || '');
+              if (topic && dStr) {
+                cloudExactKeys.add(`${normalizeTopic(topic)}_${dStr}`);
+              }
+            });
+
+            // 若雲端有該 topic，但 date 不在 cloudExactKeys 中，代表日期被修改了或該場次被刪除了，將其從 mergedMap 移除 (避免舊日期殘留)
+            const cloudTopics = new Set((res.courses || []).map(c => normalizeTopic(c['課程主題'] || c['課程主題 / 類別'] || '')));
+            Array.from(mergedMap.keys()).forEach(key => {
+              const c = mergedMap.get(key);
+              if (cloudTopics.has(normalizeTopic(c.topic)) && !cloudExactKeys.has(key)) {
+                mergedMap.delete(key);
+              }
+            });
+
             // 💡 3. 強制併入雲端資料 (最新依據)
+            const rescuedOrphans = new Set();
             (res.courses || []).forEach(c => {
               // 支援多種欄位名稱組合
               const tc = c['課程主題 / 類別'] || c['課程主題'] || '';
@@ -674,14 +775,53 @@ export default function App() {
                 return;
               }
 
-              const currentEnrollees = enrollMap[key] || [];
-              const cloudCount = parseInt(c['報名人數']) || 0;
-              const existing = mergedMap.get(key);
+              // 尋找已有的 course 紀錄 (包含其 id)
+              let existing = mergedMap.get(key);
+              // 如果本來因為日期修改而被刪除，我們嘗試用 nTopic 找回原本的 ID 與設定 (繼承)
+              if (!existing) {
+                for (const oldKey of Object.keys(prev)) {
+                   const oldCourses = prev[oldKey] || [];
+                   const found = oldCourses.find(oldC => normalizeTopic(oldC.topic) === normalizeTopic(topic));
+                   if (found) { existing = { ...found }; break; }
+                }
+              }
 
               const cloudPdf = (c['教材講義'] || '').toString().trim();
               const cloudOutline = (c['上課大綱'] || '').toString().trim();
               const cloudSurvey = (c['問卷連結'] || c['課後問卷'] || '').toString().trim();
               const cloudVideo = (c['影片連結'] || c['影片上傳'] || '').toString().trim();
+              const cloudDeadline = (c['繳交截止時間'] || '').toString().trim();
+
+              const cloudCount = parseInt(c['報名人數']) || 0;
+              let baseCloudEnrollees = enrollMap[key] || [];
+
+              // ✅ 自動救援機制：如果這是該主題的場次，把因為改日期而變成孤兒的報名單合併進來
+              const nTopic = normalizeTopic(topic);
+              if (!rescuedOrphans.has(nTopic) && orphanedMap[nTopic]) {
+                baseCloudEnrollees = [...baseCloudEnrollees, ...orphanedMap[nTopic]];
+                rescuedOrphans.add(nTopic);
+              }
+
+              // ✅ Pending 合併：將近 5 分鐘內剛報名 (尚未同步回雲端) 的本地快取補回去
+              const PENDING_TTL = 5 * 60 * 1000;
+              const now = Date.now();
+              pendingEnrollmentsRef.current = pendingEnrollmentsRef.current.filter(p => now - p.addedAt < PENDING_TTL);
+              const coursePending = pendingEnrollmentsRef.current.filter(p => p.courseKey === key);
+              const pendingNotInCloud = coursePending.filter(p =>
+                !baseCloudEnrollees.some(u => {
+                  if (p.enrollee.email && u.email) return u.email.toLowerCase() === p.enrollee.email.toLowerCase();
+                  return u.name === p.enrollee.name && u.org === p.enrollee.org;
+                })
+              );
+              // 若雲端已經收到該 pending，則移除
+              coursePending.filter(p => !pendingNotInCloud.includes(p)).forEach(p => {
+                pendingEnrollmentsRef.current = pendingEnrollmentsRef.current.filter(x => x !== p);
+              });
+
+              // 最新實際的正確名單 = 雲端清單 + 尚未上傳的本地報名
+              const currentEnrollees = pendingNotInCloud.length > 0
+                ? [...baseCloudEnrollees, ...pendingNotInCloud.map(p => p.enrollee)]
+                : baseCloudEnrollees;
 
               mergedMap.set(key, {
                 ...(existing || { id: Date.now() + Math.random() }),
@@ -693,11 +833,13 @@ export default function App() {
                 pdfUrl: cloudPdf || existing?.pdfUrl || '',
                 outlineUrl: cloudOutline || existing?.outlineUrl || '',
                 surveyUrl: cloudSurvey || existing?.surveyUrl || '',
+                submissionDeadline: cloudDeadline || existing?.submissionDeadline || '',
                 enrollees: currentEnrollees,
-                // 直接用報名表的實際人數，避免課程總表「報名人數」延遲更新的問題
+                // 直接使用實際人數 (包含本機 pending)。如果完全沒人，但總表人數有數字，才顯示總表的數字。
+                // 絕對「不可」加上 existing?.enrolled，否則後台刪人時前台會永遠卡在舊人數。
                 enrolled: currentEnrollees.length > 0
                   ? currentEnrollees.length
-                  : Math.max(cloudCount, existing?.enrolled || 0),
+                  : cloudCount,
                 displayDate: rawDate.toString() || existing?.displayDate || dStr,
                 dateStr: dStr
               });
@@ -743,8 +885,35 @@ export default function App() {
         return;
       }
 
+      // 預先取出課程的 Exact Keys，用來判斷哪些報名是孤兒
+      const cCols = cData.table.cols;
+      const cRows = cData.table.rows;
+      const cIdx = {};
+      cCols.forEach((col, i) => { if (col.label) cIdx[col.label.trim().replace(/\s+/g, '')] = i; });
+      const cTopicSummaryI = cIdx['課程主題/類別'];
+      const cTopicI = cIdx['課程主題'];
+      const cDateI = cIdx['上課日期'];
+
+      const cloudExactKeys = new Set();
+      cRows.forEach(row => {
+        let t = '';
+        if (cTopicSummaryI !== undefined && row.c[cTopicSummaryI]?.v) {
+          t = (row.c[cTopicSummaryI]?.v || '').split('【')[0].trim();
+        } else if (cTopicI !== undefined && row.c[cTopicI]?.v) {
+          t = row.c[cTopicI]?.v || '';
+        }
+        if (!t) return;
+        let d = '';
+        if (cDateI !== undefined && row.c[cDateI]) d = row.c[cDateI].f || String(row.c[cDateI].v);
+        const dStr = normalizeDate(d);
+        if (t && dStr) {
+          cloudExactKeys.add(`${normalizeTopic(t)}_${dStr}`);
+        }
+      });
+
       // --- 處理報名紀錄 (Enrollments) ---
       const enrollMap = {}; // "Topic_Date" -> [enrollees]
+      const orphanedMap = {}; // "Topic" -> [enrollees]
       if (eData && eData.table && eData.table.rows) {
         const eCols = eData.table.cols;
         const eRows = eData.table.rows;
@@ -761,47 +930,51 @@ export default function App() {
         const attendedI = eIdx['報到狀態'] || eIdx['報到'];
 
         eRows.forEach(row => {
-          const tc = row.c[tcI]?.v || '';
-          const name = row.c[nameI]?.v || '';
-          const org = row.c[orgI]?.v || '';
-          const title = row.c[titleI]?.v || '';
-          const email = (row.c[emailI]?.v || '').trim().toLowerCase();
-          const rawDate = row.c[dateI]?.v || row.c[dateI]?.f || '';
-          const attendedVal = attendedI !== undefined ? (row.c[attendedI]?.v || '') : '';
+          const tc = String(row.c[tcI]?.v || '');
+          const name = String(row.c[nameI]?.v || '');
+          const org = String(row.c[orgI]?.v || '');
+          const title = String(row.c[titleI]?.v || '');
+          const email = String(row.c[emailI]?.v || '').trim().toLowerCase();
+          const rawDate = String(row.c[dateI]?.v || row.c[dateI]?.f || '');
+          const attendedVal = String(attendedI !== undefined ? (row.c[attendedI]?.v || '') : '');
           const isAttended = attendedVal.includes('已報到') || attendedVal === 'true' || attendedVal === 'TRUE';
-          const action = row.c[actionI]?.v || '';
+          const action = String(row.c[actionI]?.v || '');
 
-          // ⛔ 跳過沒有姓名或信箱的空白列（課程骨架假資料）
-          if (!tc || !email || !name || !rawDate) return;
+          // ⛔ 只要有姓名、主題和日期就視為有效報名，不強制要求信箱
+          if (!tc || !name || !rawDate) return;
 
           // 使用標準化 Topic 名稱 (去空格/符號) 與 標準化日期
           const topicOnly = tc.split('【')[0].trim();
+          const nTopic = normalizeTopic(topicOnly);
           const nDate = normalizeDate(rawDate);
-          const key = `${normalizeTopic(topicOnly)}_${nDate}`;
+          const key = `${nTopic}_${nDate}`;
 
-          if (!enrollMap[key]) enrollMap[key] = [];
+          const targetMap = cloudExactKeys.has(key) ? enrollMap : orphanedMap;
+          const mapKey = cloudExactKeys.has(key) ? key : nTopic;
+
+          if (!targetMap[mapKey]) targetMap[mapKey] = [];
 
           if (action === 'DELETE') {
-            enrollMap[key] = enrollMap[key].filter(u => u.email !== email);
+            // ✅ email 為空時改用 name+org 比對
+            targetMap[mapKey] = targetMap[mapKey].filter(u => {
+              if (email && u.email) return u.email !== email;
+              return !(u.name === name && u.org === org);
+            });
           } else if (name) {
-            const isPracticalDone = (row.c[eIdx['實作狀態']]?.v || '').includes('已完成');
-            const isSurveyDone = (row.c[eIdx['問卷狀態']]?.v || '').includes('已完成');
-            const existingIdx = enrollMap[key].findIndex(u => u.email === email && u.name === name);
-
+            const isPracticalDone = String(row.c[eIdx['實作狀態']]?.v || '').includes('已完成');
+            const isSurveyDone = String(row.c[eIdx['問卷狀態']]?.v || '').includes('已完成');
+            const existingIdx = email
+              ? targetMap[mapKey].findIndex(u => u.email === email)
+              : targetMap[mapKey].findIndex(u => u.name === name && u.org === org);
             if (existingIdx !== -1) {
-              enrollMap[key][existingIdx] = {
-                ...enrollMap[key][existingIdx],
-                attended: enrollMap[key][existingIdx].attended || isAttended,
-                practicalDone: enrollMap[key][existingIdx].practicalDone || isPracticalDone,
-                surveyDone: enrollMap[key][existingIdx].surveyDone || isSurveyDone
+              targetMap[mapKey][existingIdx] = {
+                ...targetMap[mapKey][existingIdx],
+                attended: targetMap[mapKey][existingIdx].attended || isAttended,
+                practicalDone: targetMap[mapKey][existingIdx].practicalDone || isPracticalDone,
+                surveyDone: targetMap[mapKey][existingIdx].surveyDone || isSurveyDone
               };
             } else {
-              enrollMap[key].push({ 
-                org, title, name, email, 
-                attended: isAttended,
-                practicalDone: isPracticalDone,
-                surveyDone: isSurveyDone
-              });
+              targetMap[mapKey].push({ org, title, name, email, attended: isAttended, practicalDone: isPracticalDone, surveyDone: isSurveyDone });
             }
           }
         });
@@ -838,6 +1011,35 @@ export default function App() {
           });
         });
 
+        // 收集雲端目前的 key (topic + date) 以供後續比對刪除舊日期
+        const cloudExactKeys = new Set();
+        rows.forEach(row => {
+          let t = '';
+          if (topicSummaryI !== undefined && row.c[topicSummaryI]?.v) {
+            t = (row.c[topicSummaryI]?.v || '').split('【')[0].trim();
+          } else if (topicI !== undefined && row.c[topicI]?.v) {
+            t = row.c[topicI]?.v || '';
+          }
+          if (!t) return;
+          let d = '';
+          if (dateI !== undefined && row.c[dateI]) d = row.c[dateI].f || String(row.c[dateI].v);
+          const dStr = normalizeDate(d);
+          if (t && dStr) {
+            cloudExactKeys.add(`${normalizeTopic(t)}_${dStr}`);
+          }
+        });
+
+        // 將有在雲端但日期已經變調的本地舊課程移除
+        const cloudTopics = new Set(Array.from(cloudExactKeys).map(k => k.split('_')[0]));
+        Array.from(mergedMap.keys()).forEach(key => {
+          const c = mergedMap.get(key);
+          if (cloudTopics.has(normalizeTopic(c.topic)) && !cloudExactKeys.has(key)) {
+            mergedMap.delete(key);
+          }
+        });
+
+        const rescuedOrphans = new Set();
+
         // 2. 處理雲端資料整合
         rows.forEach(row => {
           let topic = '';
@@ -871,14 +1073,39 @@ export default function App() {
           
           // 比對全站報名清單 Map (使用標準化 Key)
           const enrolleeKey = `${normalizeTopic(topic)}_${dateStr}`;
-          const cloudEnrollees = enrollMap[enrolleeKey] || [];
+          let cloudEnrollees = enrollMap[enrolleeKey] || [];
           
-          // 雲端有實際值才覆蓋，否則保留本地已有的連結
+          // 自動救援：合併因為日期更改而變成孤兒的報名
+          const nTopic = normalizeTopic(topic);
+          if (!rescuedOrphans.has(nTopic) && orphanedMap[nTopic]) {
+            cloudEnrollees = [...cloudEnrollees, ...orphanedMap[nTopic]];
+            rescuedOrphans.add(nTopic);
+          }
+          
+          // ✅ Pending 合併：將雲端尚未確認的本地報名 merge 回來
           const existing = mergedMap.get(key);
           const cloudPdfUrl = (row.c[pdfI]?.v || '').toString().trim();
           const cloudOutlineUrl = (row.c[outlineI]?.v || '').toString().trim();
           const cloudSurveyUrl = (row.c[surveyUrlI]?.v || '').toString().trim();
           const cloudVideoUrl = (row.c[videoI]?.v || '').toString().trim();
+          const PENDING_TTL = 5 * 60 * 1000;
+          const now = Date.now();
+          pendingEnrollmentsRef.current = pendingEnrollmentsRef.current.filter(p => now - p.addedAt < PENDING_TTL);
+          const coursePending = pendingEnrollmentsRef.current.filter(p => p.courseKey === key);
+          const pendingNotInCloud = coursePending.filter(p =>
+            !cloudEnrollees.some(u => {
+              if (p.enrollee.email && u.email) return u.email.toLowerCase() === p.enrollee.email.toLowerCase();
+              return u.name === p.enrollee.name && u.org === p.enrollee.org;
+            })
+          );
+          // 雲端已收到的 pending 自動移除
+          coursePending.filter(p => !pendingNotInCloud.includes(p)).forEach(p => {
+            pendingEnrollmentsRef.current = pendingEnrollmentsRef.current.filter(x => x !== p);
+          });
+          const finalEnrollees = pendingNotInCloud.length > 0
+            ? [...cloudEnrollees, ...pendingNotInCloud.map(p => p.enrollee)]
+            : cloudEnrollees;
+
           mergedMap.set(key, {
             ...(existing || { id: Date.now() + Math.random(), enrollees: [] }),
             topic: topic.trim(),
@@ -889,11 +1116,11 @@ export default function App() {
             pdfUrl: cloudPdfUrl || existing?.pdfUrl || '',
             outlineUrl: cloudOutlineUrl || existing?.outlineUrl || '',
             surveyUrl: cloudSurveyUrl || existing?.surveyUrl || '',
-            enrollees: cloudEnrollees,
-            // 直接用報名表人數，避免課程總表延遲寫入問題
-            enrolled: cloudEnrollees.length > 0
-              ? cloudEnrollees.length
-              : Math.max(cloudEnrolledCount, existing?.enrolled || 0),
+            maxCapacity: existing?.maxCapacity || 350,
+            // ✅ 保留本地欄位（不被雲端覆蓋）
+            enrollOpen: existing?.enrollOpen,
+            enrollees: finalEnrollees,
+            enrolled: finalEnrollees.length,
             displayDate: displayDate || existing?.displayDate || dateStr.replace(/-/g, '/'),
             dateStr
           });
@@ -940,10 +1167,13 @@ export default function App() {
         return Array.from(vMap.values());
       });
 
-      if (!silent) showToast('✅ 雲端同步完成！重複課程已合併，報名資料已更新。');
+      if (!silent) showToast('✅ 雲端同步完成！');
     } catch (err) {
       console.error('雲端同步失敗:', err);
       if (!silent) showToast('⚠️ 雲端同步失敗，請檢查網路或試算表權限');
+    } finally {
+      // ✅ 無論成敗全部清除 lock
+      isFetchingRef.current = false;
     }
   };
 
@@ -1054,7 +1284,19 @@ export default function App() {
 
       // If found, update properties and move to new date list
       if (theCourse) {
-        const updatedCourse = { ...theCourse, topic: adminEditingData.topic, summary: adminEditingData.summary, instructor: adminEditingData.instructor, level: adminEditingData.level, pdfUrl: adminEditingData.pdfUrl, outlineUrl: adminEditingData.outlineUrl || '', surveyUrl: adminEditingData.surveyUrl || '', timeSlot: adminEditingData.timeSlot || '', maxCapacity: parseInt(adminEditingData.maxCapacity) || theCourse.maxCapacity };
+        const updatedCourse = {
+          ...theCourse,
+          topic: adminEditingData.topic,
+          summary: adminEditingData.summary,
+          instructor: adminEditingData.instructor,
+          level: adminEditingData.level,
+          pdfUrl: adminEditingData.pdfUrl,
+          outlineUrl: adminEditingData.outlineUrl || '',
+          surveyUrl: adminEditingData.surveyUrl || '',
+          timeSlot: adminEditingData.timeSlot || '',
+          maxCapacity: parseInt(adminEditingData.maxCapacity) || theCourse.maxCapacity,
+          submissionDeadline: adminEditingData.submissionDeadline || '' // ✅ 繳交截止時間
+        };
 
         // update dateObj string equivalent logic (optional since we derive it from key on the fly)
         if (!newData[newDateKey]) newData[newDateKey] = [];
@@ -1082,6 +1324,7 @@ export default function App() {
       '教材講義': adminEditingData.pdfUrl || '',
       '上課大綱': adminEditingData.outlineUrl || '',
       '人數上限': parseInt(adminEditingData.maxCapacity) || 350,
+      '繳交截止時間': adminEditingData.submissionDeadline || '',
       '同步時間': new Date().toLocaleString()
     });
     // 同時更新報名表中的課程資訊描述
@@ -1411,7 +1654,7 @@ export default function App() {
   const handleEnrollSubmit = (e) => {
     e.preventDefault();
 
-    // ✅ 重複報名檢查：同一課程 + 同一信箱 → 阻擋並提示
+    // ✅ 重複報名檢查（同場次）
     const existingEnrollees = selectedCourseForEnroll.enrollees || [];
     const alreadyEnrolled = existingEnrollees.some(
       u => u.email.trim().toLowerCase() === enrollForm.email.trim().toLowerCase()
@@ -1421,13 +1664,60 @@ export default function App() {
       return;
     }
 
+    // ✅ 跨場次重複報名檢查 & 補考機制
+    const prevSessions = allCoursesList.filter(c =>
+      normalizeTopic(c.topic) === normalizeTopic(selectedCourseForEnroll.topic) &&
+      c.id !== selectedCourseForEnroll.id
+    );
+
+    const now = new Date();
+    for (const c of prevSessions) {
+      const u = (c.enrollees || []).find(user => user.email.trim().toLowerCase() === enrollForm.email.trim().toLowerCase());
+      if (u) {
+        // 確認該課程是否已結算
+        let deadlinePassed = false;
+        if (c.submissionDeadline) {
+          deadlinePassed = new Date(c.submissionDeadline) <= now;
+        } else {
+          // 預設為上課日隔天 00:00 (即上課日 23:59 結束)
+          const endTime = new Date(c.dateObj);
+          endTime.setDate(endTime.getDate() + 1);
+          deadlinePassed = now >= endTime;
+        }
+
+        const isCompleted = u.attended && u.practicalDone && u.surveyDone;
+
+        if (isCompleted) {
+          // 已經順利完成修課獲得學分 -> 永久阻擋重複報名
+          showToast(`⚠️ 您已在 ${c.displayDate} 順利完成「${selectedCourseForEnroll.topic}」修課獲得學分，不可重複修課喔！`);
+          return;
+        } else {
+          if (deadlinePassed) {
+            // 已結算且未完成 (缺席/缺作業/缺問卷) => 可重新報名新場次！(不return阻擋)
+            console.log(`[補考機制] 允許學員 ${u.email} 重新報名 ${selectedCourseForEnroll.topic}，前次修課未完成。`);
+          } else {
+            // 尚未結算 (未來課程或繳交期限內) => 阻擋報名兩場
+            showToast(`⚠️ 您已報名「${selectedCourseForEnroll.topic}」的 ${c.displayDate} 場，如需換場請先在「個人修課查詢」取消原報名`);
+            return;
+          }
+        }
+      }
+    }
+
     const newEnrollee = { ...enrollForm, attended: false };
 
-    // ✅ 確保日期顯示正確 (修正 undefined 問題)
+    // ✅ 確保日期顯示正確
     const displayDate = selectedCourseForEnroll.displayDate || (() => {
       const [y, m, d] = selectedCourseForEnroll.dateStr.split('-');
       return `${y}年${m}月${d}日`;
     })();
+
+    // ✅ 加入 pending 緩衝區，避免 cloud sync 在 GAS 寫入前把這筆蓋掉
+    const courseKey = `${normalizeTopic(selectedCourseForEnroll.topic)}_${selectedCourseForEnroll.dateStr}`;
+    pendingEnrollmentsRef.current = [
+      ...pendingEnrollmentsRef.current.filter(p => !(p.courseKey === courseKey && p.enrollee.email === newEnrollee.email)),
+      { courseKey, enrollee: newEnrollee, addedAt: Date.now() }
+    ];
 
     setCoursesData(prev => {
       const newData = { ...prev };
@@ -1486,6 +1776,113 @@ export default function App() {
     }, 3000);
     // 再多等一次，確保跨裝置也能看到
     setTimeout(() => handleFetchCoursesFromCloud(true), 8000);
+  };
+
+  // ✅ 自助取消報名（前台學員，課程當天前均可取消）
+  const handleCancelEnrollment = (courseId, dateStr, email, name) => {
+    setCoursesData(prev => {
+      const newData = { ...prev };
+      if (newData[dateStr]) {
+        newData[dateStr] = newData[dateStr].map(c => {
+          if (c.id !== courseId) return c;
+          const newEnrollees = c.enrollees.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+          return { ...c, enrolled: Math.max(0, (c.enrolled || 1) - 1), enrollees: newEnrollees };
+        });
+      }
+      return newData;
+    });
+    // 從 pending buffer 移除
+    pendingEnrollmentsRef.current = pendingEnrollmentsRef.current.filter(
+      p => !(p.courseKey.endsWith('_' + dateStr) && p.enrollee.email.toLowerCase() === email.toLowerCase())
+    );
+    // 同步刪除至 GAS
+    const course = allCoursesList.find(c => c.id === courseId);
+    if (course) {
+      syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
+        '上課日期': course.displayDate,
+        '課程主題': course.topic,
+        '報名姓名': name,
+        'EMAIL': email,
+        'action': 'DELETE',
+        '刪除時間': new Date().toLocaleString()
+      });
+    }
+    showToast(`✅ 已取消「${course?.topic || ''}」報名，可重新報名其他場次`);
+    setCancelConfirm(null);
+    // 重新查詢以更新畫面
+    setTimeout(() => handleFetchCoursesFromCloud(true), 2000);
+  };
+
+  // ✅ 作業連結繳交
+  const handleSubmitHomework = (courseId, dateStr, email, name, link) => {
+    setCoursesData(prev => {
+      const newData = { ...prev };
+      if (newData[dateStr]) {
+        newData[dateStr] = newData[dateStr].map(c => {
+          if (c.id !== courseId) return c;
+          return {
+            ...c,
+            enrollees: c.enrollees.map(u =>
+              u.email.toLowerCase() === email.toLowerCase() && u.name === name
+                ? { ...u, practicalDone: true, homeworkLink: link }
+                : u
+            )
+          };
+        });
+      }
+      return newData;
+    });
+    const course = allCoursesList.find(c => c.id === courseId);
+    if (course) {
+      syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
+        '上課日期': course.displayDate,
+        '課程主題 / 類別': `${course.topic} ${course.summary}`,
+        '報名姓名': name,
+        'EMAIL': email,
+        '實作狀態': '✅ 已完成',
+        '作業連結': link,
+        '更新時間': new Date().toLocaleString()
+      }, setSyncStatus);
+    }
+    showToast('✅ 作業連結已繳交，後台已更新！');
+    setHomeworkModal(null);
+    setHomeworkLink('');
+  };
+
+  // ✅ 心得填寫提交（≤100字）
+  const handleSubmitReflection = (courseId, dateStr, email, name, text) => {
+    setCoursesData(prev => {
+      const newData = { ...prev };
+      if (newData[dateStr]) {
+        newData[dateStr] = newData[dateStr].map(c => {
+          if (c.id !== courseId) return c;
+          return {
+            ...c,
+            enrollees: c.enrollees.map(u =>
+              u.email.toLowerCase() === email.toLowerCase() && u.name === name
+                ? { ...u, surveyDone: true, reflection: text }
+                : u
+            )
+          };
+        });
+      }
+      return newData;
+    });
+    const course = allCoursesList.find(c => c.id === courseId);
+    if (course) {
+      syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
+        '上課日期': course.displayDate,
+        '課程主題 / 類別': `${course.topic} ${course.summary}`,
+        '報名姓名': name,
+        'EMAIL': email,
+        '問卷狀態': '✅ 已完成',
+        '課後心得': text,
+        '更新時間': new Date().toLocaleString()
+      }, setSyncStatus);
+    }
+    showToast('✅ 心得已提交！');
+    setReflectionModal(null);
+    setReflectionText('');
   };
 
   const handleWishSubmit = (e) => {
@@ -3011,55 +3408,138 @@ export default function App() {
         viewingEnrolleesCourse && (
           <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xl animate-in fade-in">
             <div className="w-full max-w-6xl bg-white rounded-[3.5rem] shadow-[0_60px_120px_rgba(0,0,0,0.5)] overflow-hidden relative flex flex-col h-[85vh]">
-              <div className="p-8 md:p-10 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3"><Users size={36} className="text-indigo-600 hidden md:block" /> {viewingEnrolleesCourse.topic}</h2>
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                      <Filter size={16} className="text-indigo-500" />
-                      <select 
-                        value={enrolleeFilterOrg} 
-                        onChange={e => setEnrolleeFilterOrg(e.target.value)}
-                        className="bg-transparent border-none text-sm font-bold text-gray-700 focus:ring-0 cursor-pointer outline-none"
-                      >
-                        <option value="all">所有事業體</option>
-                        {ORG_LIST.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </div>
+              <div className="p-6 md:p-8 border-b border-gray-200 bg-gray-50 flex flex-col gap-3">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-black text-gray-800 flex items-center gap-3"><Users size={28} className="text-indigo-600 hidden md:block" /> {viewingEnrolleesCourse.topic}</h2>
+                    <p className="text-sm text-gray-500 mt-1">{viewingEnrolleesCourse.displayDate} ｜ 講師：{viewingEnrolleesCourse.instructor}</p>
                   </div>
+                  <button onClick={() => { setViewingEnrolleesCourse(null); setEnrolleeFilterOrg('all'); setAdminIncompleteFilter('all'); }} className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-500 transition-colors self-start md:self-auto"><X size={24} /></button>
                 </div>
-                <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-end">
-                  <span className="text-sm md:text-base font-bold text-gray-500 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl shadow-sm border border-gray-200">
-                    出席：{viewingEnrolleesCourse.enrollees?.filter(e => e.attended && (e.name||'').trim() && (e.email||'').trim()).length || 0} / 報名 {viewingEnrolleesCourse.enrollees?.filter(e => (e.name||'').trim() && (e.email||'').trim()).length || 0}
-                    {enrolleeFilterOrg !== 'all' && <span className="text-indigo-600 ml-2">(篩選：{filteredEnrolleesList.length})</span>}
-                  </span>
-                  {adminAuthenticated && (
-                    <button onClick={() => handlePrintEnrollees(viewingEnrolleesCourse, filteredEnrolleesList)} className="px-3 py-1.5 md:px-4 md:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold flex items-center gap-2 transition-transform hover:scale-105">
-                      <Printer size={18} /> <span className="hidden sm:inline">列印篩選名單</span>
+
+                {/* ✅ 課程結算統計與完成數字 */}
+                {(() => {
+                  const now = new Date();
+                  let deadlinePassed = false;
+                  if (viewingEnrolleesCourse.submissionDeadline) {
+                    deadlinePassed = new Date(viewingEnrolleesCourse.submissionDeadline) <= now;
+                  } else {
+                    const endTime = new Date(viewingEnrolleesCourse.dateObj);
+                    endTime.setDate(endTime.getDate() + 1);
+                    deadlinePassed = now >= endTime;
+                  }
+
+                  if (!deadlinePassed) return null;
+
+                  const users = viewingEnrolleesCourse.enrollees || [];
+                  const total = users.length;
+                  const completed = users.filter(u => u.attended && u.practicalDone && u.surveyDone).length;
+                  const noAttend = users.filter(u => !u.attended).length;
+                  const missedPart = users.filter(u => u.attended && (!u.practicalDone || !u.surveyDone)).length;
+
+                  return (
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-indigo-100 flex flex-wrap gap-4 mt-1">
+                      <div className="flex-1 min-w-[120px]">
+                        <p className="text-[10px] text-gray-400 font-bold mb-1">獲得學分率</p>
+                        <p className="text-xl font-black text-indigo-900">{total > 0 ? Math.round(completed/total * 100) : 0}%</p>
+                      </div>
+                      <div className="flex-1 min-w-[120px] bg-green-50/50 p-2 rounded-xl border border-green-100">
+                        <p className="text-[10px] text-green-600 font-bold mb-1">🟢 順利完成 (得學分)</p>
+                        <p className="text-xl font-black text-green-700">{completed} <span className="text-xs">人</span></p>
+                      </div>
+                      <div className="flex-1 min-w-[120px] bg-red-50/50 p-2 rounded-xl border border-red-100">
+                        <p className="text-[10px] text-red-600 font-bold mb-1">🔴 有報沒上課</p>
+                        <p className="text-xl font-black text-red-700">{noAttend} <span className="text-xs">人</span></p>
+                      </div>
+                      <div className="flex-1 min-w-[120px] bg-amber-50/50 p-2 rounded-xl border border-amber-100">
+                        <p className="text-[10px] text-amber-600 font-bold mb-1">🟡 有上課缺條件</p>
+                        <p className="text-xl font-black text-amber-700">{missedPart} <span className="text-xs">人</span></p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Filter Row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200">
+                    <Filter size={14} className="text-indigo-500" />
+                    <select value={enrolleeFilterOrg} onChange={e => setEnrolleeFilterOrg(e.target.value)}
+                      className="bg-transparent border-none text-sm font-bold text-gray-700 focus:ring-0 cursor-pointer outline-none">
+                      <option value="all">所有事業體</option>
+                      {ORG_LIST.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  {/* ✅ 未完成篩選 */}
+                  {['all','no_attend','no_practical','no_survey'].map(f => (
+                    <button key={f} onClick={() => setAdminIncompleteFilter(f)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                        adminIncompleteFilter === f
+                          ? (f==='all' ? 'bg-gray-700 text-white border-gray-700' : f==='no_attend' ? 'bg-emerald-600 text-white border-emerald-600' : f==='no_practical' ? 'bg-blue-600 text-white border-blue-600' : 'bg-pink-600 text-white border-pink-600')
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                      }`}>
+                      {f==='all'?'全部':f==='no_attend'?'未出席':f==='no_practical'?'未繳作業':'未填心得'}
                     </button>
-                  )}
-                  <button onClick={() => { setViewingEnrolleesCourse(null); setEnrolleeFilterOrg('all'); }} className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-500 transition-colors"><X size={24} /></button>
+                  ))}
+                  <div className="ml-auto flex items-center gap-2">
+                    {/* ✅ 完成率 badge */}
+                    {(() => {
+                      const valid = (viewingEnrolleesCourse.enrollees||[]).filter(e => (e.name||'').trim() && (e.email||'').trim());
+                      const done = valid.filter(e => e.attended && e.practicalDone && e.surveyDone).length;
+                      const pct = valid.length > 0 ? Math.round(done/valid.length*100) : 0;
+                      return (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl border border-gray-200 shadow-sm">
+                          <span className="text-xs font-bold text-gray-500">修課完成率</span>
+                          <span className={`text-base font-black ${pct>=80?'text-emerald-600':pct>=50?'text-amber-600':'text-red-500'}`}>{pct}%</span>
+                          <span className="text-xs text-gray-400">{done}/{valid.length}</span>
+                        </div>
+                      );
+                    })()}
+                    <span className="text-sm font-bold text-gray-500 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-200">
+                      出席：{viewingEnrolleesCourse.enrollees?.filter(e => e.attended && (e.name||'').trim() && (e.email||'').trim()).length || 0} / 報名 {viewingEnrolleesCourse.enrollees?.filter(e => (e.name||'').trim() && (e.email||'').trim()).length || 0}
+                    </span>
+                    {adminAuthenticated && (
+                      <button onClick={() => handlePrintEnrollees(viewingEnrolleesCourse, filteredEnrolleesList)} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm font-bold flex items-center gap-1.5 transition-all text-sm">
+                        <Printer size={16} /> <span className="hidden sm:inline">列印</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse min-w-[1000px]">
+                <table className="w-full text-left border-collapse min-w-[1050px]">
                   <thead className="bg-gray-100 sticky top-0 z-10 text-gray-500 font-black uppercase text-xs">
                     <tr>
-                      <th className="p-4 md:p-6 text-center w-20">簽到<br/>報到</th>
-                      <th className="p-4 md:p-6 text-center w-20">核核<br/>實作</th>
-                      <th className="p-4 md:p-6 text-center w-20">核核<br/>問卷</th>
-                      <th className="p-4 md:p-6 w-16 text-center">序號</th>
-                      <th className="p-4 md:p-6">事業體/職稱</th>
-                      <th className="p-4 md:p-6">姓名/信箱</th>
+                      <th className="p-4 text-center w-16">出席</th>
+                      <th className="p-4 text-center w-16">作業</th>
+                      <th className="p-4 text-center w-16">心得</th>
+                      <th className="p-4 text-center w-16">完成</th>
+                      <th className="p-4 w-12 text-center">#</th>
+                      <th className="p-4">事業體/職稱</th>
+                      <th className="p-4">姓名/信箱</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEnrolleesList.length > 0 ? filteredEnrolleesList.map((u, i) => (
-                      <tr key={i} className={`border-b border-gray-100 transition-colors ${u.attended ? 'bg-emerald-50/30' : 'hover:bg-gray-50'}`}>
-                        <td className="p-4 md:p-6 text-center">
-                          <input
-                            type="checkbox"
-                            checked={u.attended || false}
+                    {filteredEnrolleesList
+                      .filter(u => {
+                        if (adminIncompleteFilter === 'no_attend') return !u.attended;
+                        if (adminIncompleteFilter === 'no_practical') return !u.practicalDone;
+                        if (adminIncompleteFilter === 'no_survey') return !u.surveyDone;
+                        return true;
+                      })
+                      .length > 0 ? filteredEnrolleesList
+                      .filter(u => {
+                        if (adminIncompleteFilter === 'no_attend') return !u.attended;
+                        if (adminIncompleteFilter === 'no_practical') return !u.practicalDone;
+                        if (adminIncompleteFilter === 'no_survey') return !u.surveyDone;
+                        return true;
+                      })
+                      .map((u, i) => (
+                      <tr key={i} className={`border-b border-gray-100 transition-colors ${
+                        u.attended && u.practicalDone && u.surveyDone ? 'bg-emerald-50/40' : u.attended ? 'bg-white' : 'hover:bg-gray-50'
+                      }`}>
+                        {/* 出席 - 管理員可手動打勾 */}
+                        <td className="p-4 text-center">
+                          <input type="checkbox" checked={u.attended || false}
                             onChange={(e) => {
                               const isChecked = e.target.checked;
                               const targetIdx = u.originalIndex;
@@ -3080,41 +3560,57 @@ export default function App() {
                                 return newData;
                               });
                             }}
-                            className="w-6 h-6 md:w-8 md:h-8 text-emerald-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-emerald-500 cursor-pointer shadow-sm transition-all"
+                            className="w-5 h-5 text-emerald-600 bg-gray-100 rounded border-2 border-gray-300 cursor-pointer"
                           />
                         </td>
-                        <td className="p-4 md:p-6 text-center">
-                          <input
-                            type="checkbox"
-                            checked={u.practicalDone || false}
-                            onChange={(e) => handleTogglePractical(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
-                            className="w-6 h-6 md:w-8 md:h-8 text-blue-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm transition-all"
-                          />
+                        {/* 作業 - 管理員手動覆蓋 */}
+                        <td className="p-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <input type="checkbox" checked={u.practicalDone || false}
+                              onChange={(e) => handleTogglePractical(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
+                              className="w-5 h-5 text-blue-600 bg-gray-100 rounded border-2 border-gray-300 cursor-pointer"
+                            />
+                            {u.homeworkLink && (
+                              <a href={u.homeworkLink} target="_blank" rel="noreferrer" className="text-[9px] text-blue-500 underline truncate max-w-[50px]">連結</a>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-4 md:p-6 text-center">
-                          <input
-                            type="checkbox"
-                            checked={u.surveyDone || false}
-                            onChange={(e) => handleToggleSurvey(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
-                            className="w-6 h-6 md:w-8 md:h-8 text-pink-600 bg-gray-100 rounded-lg border-2 border-gray-300 focus:ring-pink-500 cursor-pointer shadow-sm transition-all"
-                          />
+                        {/* 心得 - 管理員手動覆蓋 */}
+                        <td className="p-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <input type="checkbox" checked={u.surveyDone || false}
+                              onChange={(e) => handleToggleSurvey(viewingEnrolleesCourse.id, u.email, u.name, e.target.checked)}
+                              className="w-5 h-5 text-pink-600 bg-gray-100 rounded border-2 border-gray-300 cursor-pointer"
+                            />
+                            {u.reflection && (
+                              <span className="text-[9px] text-pink-400 truncate max-w-[50px]" title={u.reflection}>已填寫</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-4 md:p-6 font-bold text-gray-400 text-center">{i + 1}</td>
-                        <td className="p-4 md:p-6">
-                          <div className="font-black text-gray-800 text-lg md:text-xl">{u.org}</div>
-                          <div className="font-bold text-gray-500 text-sm md:text-base mt-0.5">{u.title}</div>
+                        {/* 完成狀態 badge */}
+                        <td className="p-4 text-center">
+                          {u.attended && u.practicalDone && u.surveyDone
+                            ? <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">✅</span>
+                            : <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
+                                {[!u.attended&&'未到',!u.practicalDone&&'未交',!u.surveyDone&&'未填'].filter(Boolean).join('/')}
+                              </span>
+                          }
                         </td>
-                        <td className="p-4 md:p-6">
-                          <div className="font-black text-indigo-600 text-xl md:text-2xl">{u.name}</div>
-                          <div className="font-medium text-gray-400 text-xs md:text-sm mt-1 flex items-center gap-1.5"><Mail size={14} /> {u.email || '未提供'}</div>
+                        <td className="p-4 font-bold text-gray-400 text-center text-sm">{i + 1}</td>
+                        <td className="p-4">
+                          <div className="font-black text-gray-800 text-base">{u.org}</div>
+                          <div className="font-bold text-gray-500 text-xs mt-0.5">{u.title}</div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-black text-indigo-600 text-base">{u.name}</div>
+                          <div className="font-medium text-gray-400 text-xs mt-0.5 flex items-center gap-1"><Mail size={12} /> {u.email || '未提供'}</div>
                         </td>
                         {adminAuthenticated && hasPerm('edit_courses') && (
-                          <td className="p-6 md:p-8 text-center">
+                          <td className="p-4 text-center">
                             <button
                               onClick={() => {
                                 if (!window.confirm(`確定要移除「${u.name}」的報名紀錄嗎？`)) return;
                                 const targetIdx = u.originalIndex;
-                                // 同步刪除通知到 Google Sheet
                                 syncToGoogleSheet('1m98Zpd5njWCFI7EaO6oIOhuzcOblod7gQxZafpeUAEk', {
                                   '上課日期': viewingEnrolleesCourse.displayDate,
                                   '課程主題': viewingEnrolleesCourse.topic,
@@ -3140,14 +3636,12 @@ export default function App() {
                                 });
                                 showToast(`✅ 已移除「${u.name}」的報名紀錄並同步至報名表`);
                               }}
-                              className="px-3 py-1.5 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border border-red-200 hover:border-red-500 rounded-xl text-xs font-bold transition-all"
-                            >
-                              移除
-                            </button>
+                              className="px-2 py-1 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border border-red-200 rounded-lg text-xs font-bold transition-all"
+                            >移除</button>
                           </td>
                         )}
                       </tr>
-                    )) : <tr><td colSpan="5" className="p-32 text-center font-black text-gray-300 text-4xl italic">目前尚無符合篩選條件的同仁報名</td></tr>}
+                    )) : <tr><td colSpan="8" className="p-20 text-center font-black text-gray-300 text-3xl italic">目前無符合條件的名單</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -3309,23 +3803,107 @@ export default function App() {
                 ) : (
                   <div className="flex flex-col gap-6 animate-in zoom-in-95 duration-500 ease-out">
                     <div className="flex items-center gap-5 border-b border-indigo-100 pb-5">
-                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center text-white font-black text-4xl shadow-inner rotate-3 hover:rotate-0 transition-transform cursor-default">
+                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center text-white font-black text-3xl shadow-inner">
                         {searchResult.name[0]}
                       </div>
                       <div>
-                        <h3 className="text-4xl font-black text-gray-800 tracking-wide mb-1 flex items-baseline gap-3">
-                          {searchResult.name} <span className="text-base font-bold text-indigo-400 bg-indigo-50 px-3 py-1 rounded-full">{searchResult.title}</span>
+                        <h3 className="text-3xl font-black text-gray-800 tracking-wide mb-1 flex items-baseline gap-3">
+                          {searchResult.name} <span className="text-sm font-bold text-indigo-400 bg-indigo-50 px-3 py-1 rounded-full">{searchResult.title}</span>
                         </h3>
-                        <p className="text-indigo-600 font-extrabold text-xl flex items-center gap-1.5"><HeartHandshake size={20} /> {searchResult.org}</p>
+                        <p className="text-indigo-600 font-extrabold text-base flex items-center gap-1.5"><HeartHandshake size={18} /> {searchResult.org}</p>
                       </div>
-                      <div className="ml-auto flex items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-indigo-50 group hover:shadow-md transition-shadow">
-                        <div className="bg-indigo-100 p-3 rounded-2xl group-hover:bg-indigo-200 transition-colors"><BookOpen className="text-indigo-600" size={28} /></div>
+                      <div className="ml-auto flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border border-indigo-50">
+                        <div className="bg-indigo-100 p-2 rounded-xl"><BookOpen className="text-indigo-600" size={22} /></div>
                         <div>
-                          <p className="text-sm font-bold text-gray-400 mb-0.5">累積總修課</p>
-                          <p className="text-4xl font-black text-indigo-700 leading-none">{searchResult.totalCount}</p>
+                          <p className="text-xs font-bold text-gray-400">累積總修課</p>
+                          <p className="text-3xl font-black text-indigo-700 leading-none">{searchResult.totalCount}</p>
                         </div>
                       </div>
                     </div>
+
+                    {/* ✅ 我的修課紀錄 - 完整表格 with 取消/作業/心得 */}
+                    {(() => {
+                      const myEmail = searchQuery.email.trim().toLowerCase();
+                      const myName = searchQuery.name.trim();
+                      const myCourses = allCoursesList.filter(c =>
+                        (c.enrollees||[]).some(u => u.email.toLowerCase() === myEmail && u.name === myName)
+                      );
+                      if (myCourses.length === 0) return null;
+                      const today = new Date();
+                      today.setHours(0,0,0,0);
+                      return (
+                        <div className="bg-white rounded-2xl border border-indigo-100 overflow-hidden shadow-sm">
+                          <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 font-black text-indigo-800 text-sm flex items-center gap-2">
+                            📋 我的完整修課紀錄
+                            <span className="text-xs font-bold text-indigo-400 bg-white px-2 py-0.5 rounded-full border border-indigo-100">共 {myCourses.length} 堂</span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm min-w-[640px]">
+                              <thead className="bg-gray-50 text-gray-500 text-xs font-black uppercase">
+                                <tr>
+                                  <th className="px-4 py-2 text-left">課程</th>
+                                  <th className="px-3 py-2 text-center">日期</th>
+                                  <th className="px-3 py-2 text-center">出席</th>
+                                  <th className="px-3 py-2 text-center">作業</th>
+                                  <th className="px-3 py-2 text-center">心得</th>
+                                  <th className="px-3 py-2 text-center">操作</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {myCourses.map(c => {
+                                  const u = (c.enrollees||[]).find(u => u.email.toLowerCase() === myEmail && u.name === myName) || {};
+                                  const courseDate = c.dateObj || new Date(c.dateStr);
+                                  const isPast = courseDate < today;
+                                  const canCancel = courseDate >= today; // 當天也可取消
+                                  const allDone = u.attended && u.practicalDone && u.surveyDone;
+                                  return (
+                                    <tr key={c.id} className={`border-b border-gray-100 ${allDone ? 'bg-emerald-50/40' : ''}`}>
+                                      <td className="px-4 py-3 font-bold text-gray-800">{c.topic}
+                                        <span className="ml-1 text-xs text-gray-400">{c.summary}</span>
+                                      </td>
+                                      <td className="px-3 py-3 text-center text-gray-600 whitespace-nowrap text-xs">{c.displayDate?.slice(5)}</td>
+                                      <td className="px-3 py-3 text-center">
+                                        {u.attended
+                                          ? <span className="text-emerald-600 font-black text-base">✅</span>
+                                          : <span className="text-gray-300 text-base">○</span>}
+                                      </td>
+                                      <td className="px-3 py-3 text-center">
+                                        {u.practicalDone
+                                          ? <span className="text-blue-600 font-black text-base" title={u.homeworkLink||''}>✅</span>
+                                          : isPast
+                                            ? <button onClick={() => { setHomeworkModal({ courseId: c.id, dateStr: c.dateStr, topic: c.topic, displayDate: c.displayDate, email: myEmail, name: myName }); setHomeworkLink(''); }}
+                                                className="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-500 hover:text-white transition-all">
+                                                繳交
+                                              </button>
+                                            : <span className="text-gray-300 text-xs">待上課</span>}
+                                      </td>
+                                      <td className="px-3 py-3 text-center">
+                                        {u.surveyDone
+                                          ? <span className="text-pink-600 font-black text-base" title={u.reflection||''}>✅</span>
+                                          : isPast
+                                            ? <button onClick={() => { setReflectionModal({ courseId: c.id, dateStr: c.dateStr, topic: c.topic, displayDate: c.displayDate, email: myEmail, name: myName }); setReflectionText(''); }}
+                                                className="px-2 py-1 bg-pink-50 text-pink-600 border border-pink-200 rounded-lg text-xs font-bold hover:bg-pink-500 hover:text-white transition-all">
+                                                填寫
+                                              </button>
+                                            : <span className="text-gray-300 text-xs">待上課</span>}
+                                      </td>
+                                      <td className="px-3 py-3 text-center">
+                                        {canCancel
+                                          ? <button onClick={() => setCancelConfirm({ courseId: c.id, dateStr: c.dateStr, topic: c.topic, displayDate: c.displayDate, email: myEmail, name: myName })}
+                                              className="px-2 py-1 bg-red-50 text-red-500 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">
+                                              取消報名
+                                            </button>
+                                          : <span className="text-gray-300 text-xs">已結束</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                       {/* 選修 */}
@@ -3855,6 +4433,103 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(220, 38, 38, 0.4); }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
       `}} />
+
+      {/* ✅ 作業繳交 Modal */}
+      {homeworkModal && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-xl animate-in fade-in" onClick={() => setHomeworkModal(null)}>
+          <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-black text-blue-800 flex items-center gap-2">📎 繳交作業</h3>
+              <button onClick={() => setHomeworkModal(null)} className="p-2 rounded-full hover:bg-blue-50 text-blue-400"><X size={22} /></button>
+            </div>
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+              <p className="text-sm font-bold text-blue-800">{homeworkModal.topic}</p>
+              <p className="text-xs text-blue-500 mt-1">{homeworkModal.displayDate}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-black text-gray-700">作業 / 作品連結 <span className="text-red-500">*</span></label>
+              <input
+                type="url"
+                autoFocus
+                value={homeworkLink}
+                onChange={e => setHomeworkLink(e.target.value)}
+                placeholder="https://drive.google.com/... 或作品網址"
+                className="w-full bg-gray-50 border-2 border-blue-100 rounded-2xl px-4 py-3 text-base font-bold text-gray-700 focus:outline-none focus:border-blue-400 transition-all"
+              />
+              <p className="text-xs text-gray-400">請貼上 Google Drive 分享連結、GitHub 或其他作品網址</p>
+            </div>
+            <button
+              onClick={() => {
+                const link = homeworkLink.trim();
+                if (!link) { alert('請填入連結'); return; }
+                handleSubmitHomework(homeworkModal.courseId, homeworkModal.dateStr, homeworkModal.email, homeworkModal.name, link);
+              }}
+              className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black rounded-2xl text-lg shadow-lg hover:scale-105 active:scale-95 transition-all"
+            >送出作業</button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ 心得填寫 Modal */}
+      {reflectionModal && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-pink-900/40 backdrop-blur-xl animate-in fade-in" onClick={() => setReflectionModal(null)}>
+          <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-black text-pink-800 flex items-center gap-2">💬 填寫心得</h3>
+              <button onClick={() => setReflectionModal(null)} className="p-2 rounded-full hover:bg-pink-50 text-pink-400"><X size={22} /></button>
+            </div>
+            <div className="bg-pink-50 rounded-2xl p-4 border border-pink-100">
+              <p className="text-sm font-bold text-pink-800">{reflectionModal.topic}</p>
+              <p className="text-xs text-pink-500 mt-1">{reflectionModal.displayDate}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-black text-gray-700 flex justify-between">
+                課程心得 <span className="text-red-500">*</span>
+                <span className={`text-xs font-bold ${reflectionText.length > 100 ? 'text-red-500' : 'text-gray-400'}`}>{reflectionText.length}/100</span>
+              </label>
+              <textarea
+                autoFocus
+                value={reflectionText}
+                onChange={e => { if (e.target.value.length <= 100) setReflectionText(e.target.value); }}
+                placeholder="請簡述此次課程的收穫或心得（100字以內）"
+                rows={4}
+                className="w-full bg-gray-50 border-2 border-pink-100 rounded-2xl px-4 py-3 text-base font-bold text-gray-700 focus:outline-none focus:border-pink-400 transition-all resize-none"
+              />
+            </div>
+            <button
+              onClick={() => {
+                const text = reflectionText.trim();
+                if (!text) { alert('請填寫心得'); return; }
+                handleSubmitReflection(reflectionModal.courseId, reflectionModal.dateStr, reflectionModal.email, reflectionModal.name, text);
+              }}
+              className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black rounded-2xl text-lg shadow-lg hover:scale-105 active:scale-95 transition-all"
+            >送出心得</button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ 取消報名確認 Modal */}
+      {cancelConfirm && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-red-900/40 backdrop-blur-xl animate-in fade-in" onClick={() => setCancelConfirm(null)}>
+          <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-8 flex flex-col gap-5 text-center" onClick={e => e.stopPropagation()}>
+            <div className="text-5xl">⚠️</div>
+            <h3 className="text-2xl font-black text-red-700">確認取消報名？</h3>
+            <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
+              <p className="text-base font-black text-red-800">{cancelConfirm.topic}</p>
+              <p className="text-sm text-red-500 mt-1">{cancelConfirm.displayDate}</p>
+            </div>
+            <p className="text-sm text-gray-500 font-bold">取消後可重新報名同課其他場次</p>
+            <div className="flex gap-3">
+              <button onClick={() => setCancelConfirm(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-black rounded-2xl transition-all">返回</button>
+              <button
+                onClick={() => handleCancelEnrollment(cancelConfirm.courseId, cancelConfirm.dateStr, cancelConfirm.email, cancelConfirm.name)}
+                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-black rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all"
+              >確認取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div >
   );
 }
