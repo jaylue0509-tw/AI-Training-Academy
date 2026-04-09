@@ -7,6 +7,8 @@ import {
   Send, Database, Mail, FolderOpen, Search, Printer, Trash2, Filter, MapPin
 } from 'lucide-react';
 
+import { DataManager, normalizeTopic, normalizeDate } from './services/dataManager';
+
 // --- 初始資料區 (根據您的 Excel 附件內容整理) ---
 const INITIAL_COURSES = {
   '2026-3-20': [{ id: 1, topic: 'AI實戰：從菜市場到城市地標', summary: '【必修】初級', instructor: '姜順帆', level: '初級', deadline: '2026-03-17', enrolled: 0, maxCapacity: 350, hasVideo: false, pdfUrl: '', outlineUrl: '', enrollees: [] }],
@@ -119,27 +121,6 @@ const getCourseEmoji = (topic) => {
   return '🌟';
 };
 
-// --- 輔助函數：嚴格去重與標準化 ---
-const normalizeTopic = (s) => (s || '').toString().replace(/[\s\u00A0\t\r\n]+/g, '').toLowerCase().trim();
-const normalizeDate = (d) => {
-  if (!d) return '';
-  const s = d.toString();
-  
-  // 💡 如果是 ISO 格式 (例如 2026-03-12T16:00:00Z)，先轉為在地日期避免時差偏移
-  if (s.includes('T') && !isNaN(Date.parse(s))) {
-    const dateObj = new Date(s);
-    return `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
-  }
-
-  let m = s.match(/(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
-  if (m) return `${m[1]}-${parseInt(m[2], 10)}-${parseInt(m[3], 10)}`;
-  
-  // 支援 Google Charts Date 格式 (Month 需 +1)
-  m = s.match(/Date\((\d+),\s*(\d+),\s*(\d+)/);
-  if (m) return `${m[1]}-${parseInt(m[2], 10) + 1}-${parseInt(m[3], 10)}`;
-  
-  return s.trim();
-};
 
 // --- 同步至 Google Sheets (需搭配 Apps Script) ---
 const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
@@ -1163,26 +1144,8 @@ export default function App() {
   };
 
   const handleDeleteCourse = async (courseId, dateStr, topic) => {
-    if (!window.confirm(`😱 確定要徹底刪除「${topic}」嗎？\n這將會同步從 Google Sheet 雲端標記為「DELETED」，且重啟網頁後不會再出現。`)) return;
-
-    // 1. 本地狀態移除
-    setCoursesData(prev => {
-      const newData = { ...prev };
-      if (newData[dateStr]) {
-        newData[dateStr] = newData[dateStr].filter(c => c.id !== courseId);
-      }
-      return newData;
-    });
-
-    // 2. 同步到雲端標記刪除 (1VQ8 總表)
-    syncToGoogleSheet('1VQ8IXR3bbUY2cCh_Cwr6cnEWVMC8q6llpnfKBFzcUn4', {
-      '課程主題 / 類別': topic,
-      '狀態': 'DELETED',
-      '同步時間': new Date().toLocaleString()
-    });
-
+    await DataManager.deleteItem(courseId, dateStr, topic, setCoursesData, (data) => syncToGoogleSheet('1VQ8IXR3bbUY2cCh_Cwr6cnEWVMC8q6llpnfKBFzcUn4', data));
     showToast('🗑️ 課程已同步標記刪除，2 分鐘後全體生效');
-    // 立即重新抓取確保本地視圖清空
     setTimeout(() => handleFetchCoursesFromCloud(true), 1500);
   };
 
