@@ -123,32 +123,45 @@ const getCourseEmoji = (topic) => {
 
 
 // --- 同步至 Google Sheets (需搭配 Apps Script) ---
-const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
-  const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg/exec';
-  if (onStatusChange) onStatusChange('syncing');
-  try {
-    const params = new URLSearchParams();
-    params.append('sheetId', sheetId);
-    Object.keys(data).forEach(key => params.append(key, data[key]));
+// --- 同步至 Google Sheets (高速中繼 + 自動刷新版) ---
+  const syncToGoogleSheet = async (sheetId, data, onStatusChange) => {
+    const WORKER_URL = 'https://ai-academy-proxy.jaylue0509.workers.dev'; 
+    const GAS_ID = 'AKfycbw2aAuDscj_nvWicPNaQDD3vwRCtNXvcCsvvjz-7y-4CugFZmOsdYnquLI_yio5Pt4oyg';
+    const PROXY_URL = `${WORKER_URL}?id=${GAS_ID}`;
 
-    // 使用非同步方式發送，不攔截 UI
-    fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString()
-    }).then(() => {
+    if (onStatusChange) onStatusChange('syncing');
+
+    try {
+      const params = new URLSearchParams();
+      params.append('sheetId', sheetId);
+      Object.keys(data).forEach(key => params.append(key, data[key]));
+
+      // 1. 透過 Worker 發送資料
+      const response = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(params))
+      });
+
+      // 2. 取得回傳的最新 JSON
+      const result = await response.json();
+
+      // 3. 更新前台畫面資料
+      if (result.courses && typeof setCourses === 'function') {
+        setCourses(result.courses);
+      }
+      if (result.enrollments && typeof setEnrollments === 'function') {
+        setEnrollments(result.enrollments);
+      }
+
+      console.log('同步成功：', result);
       if (onStatusChange) onStatusChange('idle');
-    }).catch(err => {
-      console.error('即時同步發生錯誤', err);
-      if (onStatusChange) onStatusChange('error');
-    });
-  } catch (error) {
-    console.error('即時同步發送前錯誤', error);
-    if (onStatusChange) onStatusChange('error');
-  }
-};
 
+    } catch (err) {
+      console.error('同步發生錯誤:', err);
+      if (onStatusChange) onStatusChange('error');
+    }
+  };
 export default function App() {
 
   const [coursesData, setCoursesData] = useState(() => {
