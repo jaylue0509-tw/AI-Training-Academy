@@ -368,52 +368,71 @@ export default function App() {
     return list.sort((a, b) => a.dateObj - b.dateObj);
   }, [coursesData]);
 
-  // 同步課程至影音平台：確保每一堂課都有對應的影片槽位區塊
+  // 同步課程至影音平台：確保相同課程只會有一個影片槽位區塊 (去除不同梯次產生的重複)
   useEffect(() => {
     setVideosData(prevVideos => {
       let modified = false;
-      const newVideos = [...prevVideos];
+      
+      // 1. 清理：如果之前有因為不同梯次 id 不同而產生的重複影片，保留有連結的那個
+      const deduplicatedVideos = [];
+      const seenVideoTopics = new Set();
+      
+      [...prevVideos]
+        .sort((a, b) => (b.driveFileUrl ? 1 : 0) - (a.driveFileUrl ? 1 : 0))
+        .forEach(v => {
+          const mainTopic = v.topic.split(' - ')[0].trim();
+          if (!seenVideoTopics.has(mainTopic)) {
+            seenVideoTopics.add(mainTopic);
+            deduplicatedVideos.push(v);
+          } else {
+            modified = true;
+          }
+      });
+      const newVideos = deduplicatedVideos;
 
-      allCoursesList.forEach(course => {
+      // 2. 彙整相同主題課程 (若有任一梯次有影片就套用)
+      const uniqueCoursesMap = new Map();
+      allCoursesList.forEach(c => {
+        const key = c.topic.trim();
+        if (!uniqueCoursesMap.has(key)) {
+           uniqueCoursesMap.set(key, { ...c });
+        } else {
+           if (c.videoUrl && !uniqueCoursesMap.get(key).videoUrl) {
+               uniqueCoursesMap.get(key).videoUrl = c.videoUrl;
+           }
+        }
+      });
+
+      Array.from(uniqueCoursesMap.values()).forEach(course => {
         const targetDate = course.displayDate.replace(/年|月/g, '-').replace('日', '');
         const targetTopic = `${course.topic} - ${course.summary}`;
 
-        // 尋找是否已經有綁定此 course.id，或者從舊資料找尋對應的日期與標題前綴
-        let existing = newVideos.find(v => v.courseId === course.id);
-        if (!existing) {
-          existing = newVideos.find(v => v.date === targetDate && v.topic.startsWith(course.topic));
-          if (existing) {
-            existing.courseId = course.id;
-            modified = true;
-          }
-        }
+        // 單純用 topic 找對應的影片 (不比對 date 或 courseId)
+        let existing = newVideos.find(v => v.topic.startsWith(course.topic));
 
         if (!existing) {
-          // ⛔ 若課程影片已被管理員刪除（hidden: true），不重建
-          const wasDeleted = newVideos.find(v => v.courseId === course.id && v.hidden);
-          if (wasDeleted) return; // skip
+          const wasDeleted = newVideos.find(v => v.topic.startsWith(course.topic) && v.hidden);
+          if (wasDeleted) return; 
           modified = true;
           newVideos.push({
             id: `video_${course.id}`,
             courseId: course.id,
             topic: targetTopic,
             folderId: '11eC5Xodr0eu1gSKUWvLXw88RPuVCqMJL',
-            driveFileUrl: course.videoUrl || '',       // ✅ 徐課程資料讀取
+            driveFileUrl: course.videoUrl || '',
             size: course.videoUrl ? '已連結' : '請上傳影片',
             views: 0, clicks: 0, ctr: '-',
             date: targetDate,
             instructor: course.instructor
           });
         } else {
-          // 同步課程的任何變更
           let slotChanged = false;
-          if (existing.topic !== targetTopic || existing.instructor !== course.instructor || existing.date !== targetDate) {
+          // 不要隨機被後續的梯次覆寫 date，這樣才能維持穩定的一堂課對一個影片槽
+          if (existing.topic !== targetTopic || existing.instructor !== course.instructor) {
             existing.topic = targetTopic;
             existing.instructor = course.instructor;
-            existing.date = targetDate;
             slotChanged = true;
           }
-          // ✅ 從課程資料同步影片連結（重要：讓其他裝置讀到管理員設定的連結）
           if (course.videoUrl && existing.driveFileUrl !== course.videoUrl) {
             existing.driveFileUrl = course.videoUrl;
             existing.size = '已連結';
