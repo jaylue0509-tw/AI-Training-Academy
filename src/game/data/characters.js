@@ -11,6 +11,8 @@ export const EXPRESSION_LABEL = {
   success: '成功',
 };
 
+export const CHARACTER_BASE = `${import.meta.env?.BASE_URL ?? '/'}game/characters/`;
+
 export const CHARACTERS = {
   guide: {
     id: 'guide',
@@ -18,8 +20,10 @@ export const CHARACTERS = {
     name: '艾達',
     placeholder: true,
     color: '#6366f1',
-    // 例：images: { explain: '/game/characters/guide-explain.png', ... }
+    // 例：images: { explain: 'guide-explain.png', ... }（檔案放在 public/game/characters/）
     images: {},
+    // 地圖用全身角色四方向（正面、背面、左、右），未提供時用頭像
+    mapSprites: {},
   },
   client: {
     id: 'client',

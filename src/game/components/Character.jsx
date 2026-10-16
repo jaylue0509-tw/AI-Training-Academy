@@ -1,5 +1,5 @@
 import React from 'react';
-import { CHARACTERS, EXPRESSION_LABEL } from '../data/characters.js';
+import { CHARACTERS, CHARACTER_BASE, EXPRESSION_LABEL } from '../data/characters.js';
 
 // 暫用頭像：五種表情共用同一臉型、髮型與比例，正式素材提供後以 images 取代
 const MOUTH = {
@@ -21,7 +21,7 @@ export function Avatar({ characterId, expression = 'explain', size = 72 }) {
   const c = CHARACTERS[characterId];
   if (!c) return null;
   const img = c.images?.[expression];
-  if (img) return <img src={img} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size} height={size} className="object-contain" />;
+  if (img) return <img src={`${CHARACTER_BASE}${img}`} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size} height={size} className="object-contain" />;
   return (
     <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
       <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`${c.name}（${EXPRESSION_LABEL[expression]}，暫用圖）`}>
@@ -68,4 +68,11 @@ export function CharacterBubble({ line, onStart, onReplay, onClose, collapsed, o
       </div>
     </div>
   );
+}
+
+// 地圖角色：依移動方向換正面／背面／左／右全身圖
+export function MapSprite({ characterId, facing = 'down', size = 44, expression }) {
+  const sprite = CHARACTERS[characterId]?.mapSprites?.[facing];
+  if (!sprite) return <Avatar characterId={characterId} expression={expression} size={size} />;
+  return <img src={`${CHARACTER_BASE}${sprite}`} alt="" width={size} height={size * 1.25} className="object-contain drop-shadow" />;
 }

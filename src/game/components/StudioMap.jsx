@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LEVELS, STATIONS } from '../data/levels.js';
 import { levelScore, levelPassed } from '../engine/scoring.js';
-import { Avatar } from './Character.jsx';
+import { MapSprite } from './Character.jsx';
 import { TOOLS } from '../data/tools.js';
 
 const W = 11, H = 6;
@@ -10,6 +10,7 @@ const W = 11, H = 6;
 export default function StudioMap({ progress, update, onEnter, unlocked }) {
   const [pos, setPos] = useState(progress.position ?? { x: 5, y: 3 });
   const [walking, setWalking] = useState(null);
+  const [facing, setFacing] = useState('down');
   const ref = useRef(null);
 
   const stationAt = (x, y) => LEVELS.find(l => Math.abs(STATIONS[l.station].x - x) <= 1 && STATIONS[l.station].y === y);
@@ -24,6 +25,8 @@ export default function StudioMap({ progress, update, onEnter, unlocked }) {
     const target = { x: st.x, y: st.y + 1 };
     const t = setTimeout(() => {
       if (pos.x === target.x && pos.y === target.y) { setWalking(null); onEnter(walking.id); return; }
+      const dx = Math.sign(target.x - pos.x);
+      setFacing(dx > 0 ? 'right' : dx < 0 ? 'left' : target.y > pos.y ? 'down' : 'up');
       setPos(p => ({
         x: p.x + Math.sign(target.x - p.x),
         y: p.x === target.x ? p.y + Math.sign(target.y - p.y) : p.y,
@@ -36,6 +39,7 @@ export default function StudioMap({ progress, update, onEnter, unlocked }) {
     const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key];
     if (d) {
       e.preventDefault();
+      setFacing(d[0] > 0 ? 'right' : d[0] < 0 ? 'left' : d[1] > 0 ? 'down' : 'up');
       setPos(p => {
         const n = { x: Math.max(0, Math.min(W - 1, p.x + d[0])), y: Math.max(0, Math.min(H - 1, p.y + d[1])) };
         return stationAt(n.x, n.y) ? p : n;
@@ -75,7 +79,7 @@ export default function StudioMap({ progress, update, onEnter, unlocked }) {
         })}
         <div className="absolute transition-all duration-100 flex items-center justify-center pointer-events-none"
           style={{ left: `${(pos.x / W) * 100}%`, top: `${(pos.y / H) * 100}%`, width: `${100 / W}%`, height: `${100 / H}%` }}>
-          <Avatar characterId="guide" expression={near ? 'encourage' : 'explain'} size={44} />
+          <MapSprite characterId="guide" facing={facing} expression={near ? 'encourage' : 'explain'} size={44} />
         </div>
       </div>
       <p className="text-sm text-gray-600 mt-2">
