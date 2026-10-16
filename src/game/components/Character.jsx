@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CHARACTERS, CHARACTER_BASE, EXPRESSION_LABEL } from '../data/characters.js';
 
 // 暫用頭像：五種表情共用同一臉型、髮型與比例，正式素材提供後以 images 取代
@@ -21,7 +21,18 @@ export function Avatar({ characterId, expression = 'explain', size = 72 }) {
   const c = CHARACTERS[characterId];
   if (!c) return null;
   const img = c.images?.[expression];
-  if (img) return <img src={`${CHARACTER_BASE}${img}`} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size} height={size} className="object-contain" />;
+  if (img) return <ImageOr src={`${CHARACTER_BASE}${img}`} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size} height={size} fallback={<Placeholder c={c} expression={expression} size={size} />} />;
+  return <Placeholder c={c} expression={expression} size={size} />;
+}
+
+// 圖檔載入失敗時改顯示 fallback
+function ImageOr({ src, fallback, ...rest }) {
+  const [failed, setFailed] = useState(null);
+  if (failed === src) return fallback;
+  return <img key={src} src={src} onError={() => setFailed(src)} className="object-contain" {...rest} />;
+}
+
+function Placeholder({ c, expression, size }) {
   return (
     <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
       <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`${c.name}（${EXPRESSION_LABEL[expression]}，暫用圖）`}>
@@ -37,7 +48,7 @@ export function Avatar({ characterId, expression = 'explain', size = 72 }) {
         {expression === 'puzzled' && <text x="76" y="28" fontSize="20" fontWeight="bold" fill="#333">?</text>}
         {expression === 'remind' && <text x="78" y="28" fontSize="20" fontWeight="bold" fill="#d97706">!</text>}
       </svg>
-      {c.placeholder && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-gray-800 text-white px-1 rounded whitespace-nowrap">暫用圖</span>}
+      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-gray-800 text-white px-1 rounded whitespace-nowrap">暫用圖</span>
     </span>
   );
 }
@@ -73,6 +84,7 @@ export function CharacterBubble({ line, onStart, onReplay, onClose, collapsed, o
 // 地圖角色：依移動方向換正面／背面／左／右全身圖
 export function MapSprite({ characterId, facing = 'down', size = 44, expression }) {
   const sprite = CHARACTERS[characterId]?.mapSprites?.[facing];
-  if (!sprite) return <Avatar characterId={characterId} expression={expression} size={size} />;
-  return <img src={`${CHARACTER_BASE}${sprite}`} alt="" width={size} height={size * 1.25} className="object-contain drop-shadow" />;
+  const avatar = <Avatar characterId={characterId} expression={expression} size={size} />;
+  if (!sprite) return avatar;
+  return <ImageOr src={`${CHARACTER_BASE}${sprite}`} alt="" width={size * 1.4} height={size * 1.75} fallback={avatar} />;
 }
