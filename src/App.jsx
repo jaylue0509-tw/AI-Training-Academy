@@ -4,7 +4,7 @@ import {
   Video, FileText, CheckCircle2, List, Settings, Download,
   Edit3, Save, Eye, TrendingUp, BookOpen, UserPlus,
   BarChart3, Upload, Film, PlayCircle, HeartHandshake,
-  Send, Database, Mail, FolderOpen, Search, Printer, Trash2, Filter, MapPin
+  Send, Database, Mail, FolderOpen, Search, Printer, Trash2, Filter, MapPin, Gamepad2
 } from 'lucide-react';
 
 import { DataManager, normalizeTopic, normalizeDate } from './services/dataManager';
@@ -2275,6 +2275,12 @@ export default function App() {
               >
                 <FileText size={18} /> <span className="hidden sm:inline">今日課後問卷</span>
               </button>
+              <a
+                href="#/ai-master"
+                className="shrink-0 px-4 py-2 md:px-5 md:py-2.5 rounded-full flex items-center gap-1.5 md:gap-2 transition-all duration-300 text-sm md:text-base whitespace-nowrap text-violet-700 hover:text-white font-bold bg-violet-50 hover:bg-violet-500 shadow-sm hover:shadow-md border border-violet-100"
+              >
+                <Gamepad2 size={18} /> <span className="hidden sm:inline">邁向 AI 大師</span>
+              </a>
               <div className="w-px h-6 bg-gray-300/60 mx-1 md:mx-2"></div>
               {[
                 { mode: 'calendar', Icon: CalendarDays, label: '月曆檢視', activeColor: 'bg-gradient-to-r from-orange-500 to-red-500', mobileHide: true },

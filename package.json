@@ -10,10 +10,13 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test": "node --test src/game/engine/*.test.js",
+    "game:materials": "node scripts/build-game-materials.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
+    "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
