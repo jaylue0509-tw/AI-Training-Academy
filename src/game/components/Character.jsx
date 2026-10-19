@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CHARACTERS, CHARACTER_BASE, EXPRESSION_LABEL } from '../data/characters.js';
+import { CHARACTERS, EXPRESSION_LABEL } from '../data/characters.js';
 
 // 暫用頭像：五種表情共用同一臉型、髮型與比例，正式素材提供後以 images 取代
 const MOUTH = {
@@ -21,15 +21,22 @@ export function Avatar({ characterId, expression = 'explain', size = 72 }) {
   const c = CHARACTERS[characterId];
   if (!c) return null;
   const img = c.images?.[expression];
-  if (img) return <ImageOr src={`${CHARACTER_BASE}${img}`} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size} height={size} fallback={<Placeholder c={c} expression={expression} size={size} />} />;
+  // 頭像框只顯示頭與肩膀：圖放大後以上緣置中裁切
+  if (img) return (
+    <span className="relative inline-block shrink-0 overflow-hidden rounded-full" style={{ width: size, height: size, background: `${c.color}1f` }}>
+      <ImageOr src={img} alt={`${c.name}（${EXPRESSION_LABEL[expression]}）`} width={size * 1.5} height={size * 1.875}
+        className="absolute max-w-none left-1/2 -translate-x-1/2" style={{ top: -size * 0.02 }}
+        fallback={<Placeholder c={c} expression={expression} size={size} />} />
+    </span>
+  );
   return <Placeholder c={c} expression={expression} size={size} />;
 }
 
 // 圖檔載入失敗時改顯示 fallback
-function ImageOr({ src, fallback, ...rest }) {
+function ImageOr({ src, fallback, className = 'object-contain', ...rest }) {
   const [failed, setFailed] = useState(null);
   if (failed === src) return fallback;
-  return <img key={src} src={src} onError={() => setFailed(src)} className="object-contain" {...rest} />;
+  return <img key={src} src={src} className={className} onError={() => setFailed(src)} {...rest} />;
 }
 
 function Placeholder({ c, expression, size }) {
@@ -86,5 +93,5 @@ export function MapSprite({ characterId, facing = 'down', size = 44, expression 
   const sprite = CHARACTERS[characterId]?.mapSprites?.[facing];
   const avatar = <Avatar characterId={characterId} expression={expression} size={size} />;
   if (!sprite) return avatar;
-  return <ImageOr src={`${CHARACTER_BASE}${sprite}`} alt="" width={size * 1.4} height={size * 1.75} fallback={avatar} />;
+  return <ImageOr src={sprite} alt="" width={size * 1.2} height={size * 1.8} className="object-contain drop-shadow-sm" fallback={avatar} />;
 }

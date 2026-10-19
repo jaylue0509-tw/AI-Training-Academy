@@ -12,7 +12,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "test": "node --test src/game/engine/*.test.js",
-    "game:materials": "node scripts/build-game-materials.mjs"
+    "game:materials": "node scripts/build-game-materials.mjs",
+    "game:characters": "node scripts/build-game-characters.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",

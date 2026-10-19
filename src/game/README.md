@@ -23,7 +23,7 @@
    `public/game/screens/<chatgpt|claude|gemini>/<web|desktop>/L<關>-<類型>.png`，
    再在 `data/screens.js` 的 `RECORDED` 填入系統、版本、錄製日期、說明與點選位置（百分比）。
    桌面功能需轉網頁時，填 `bridge` 寫明完整轉接。類型見 `SCREEN_KINDS`。
-2. **人物素材**：在 `data/characters.js` 的 `images` 填五種表情的透明背景半身圖，並把 `placeholder` 改成 `false`。
+2. **人物素材**：內建原創向量圖在 `assets/characters/`（`npm run game:characters` 產生）。放入同名 PNG 即會優先使用，檔名見該資料夾的 README。
 3. **Skill 套件**：`public/game/skills/` 已由腳本產生三平台教學 Skill。上架前請在各平台實際安裝驗證格式。
 4. **講師確認碼**：預設 `AIMASTER`，部署時以環境變數 `VITE_INSTRUCTOR_CODE` 覆寫。
    確認碼寫在前端程式中，只能防止誤按，不能當成安全驗證。

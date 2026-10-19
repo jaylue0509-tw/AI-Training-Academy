@@ -1,5 +1,5 @@
-// 人物設定：造型素材由使用者提供，未提供前使用標示「暫用圖」的佔位頭像。
-// 換人物只需放入對應檔名的圖檔（透明背景半身圖，建議 ≥1000px 高）。
+// 人物設定：內建原創向量圖（scripts/build-game-characters.mjs 產生）；
+// 放入同名 PNG（透明背景半身圖，建議 ≥1000px 高）即可替換，不需改程式。
 
 export const EXPRESSIONS = ['explain', 'encourage', 'puzzled', 'remind', 'success'];
 
@@ -11,10 +11,10 @@ export const EXPRESSION_LABEL = {
   success: '成功',
 };
 
-export const CHARACTER_BASE = `${import.meta.env?.BASE_URL ?? '/'}game/characters/`;
-
-// 圖檔放在 public/game/characters/，檔名：<人物ID>-<表情>.png；找不到檔案時自動改用暫用頭像
-const expressionFiles = id => Object.fromEntries(EXPRESSIONS.map(e => [e, `${id}-${e}.png`]));
+// 建置時掃描 src/game/assets/characters/：同名檔案以 PNG 優先，其次內建 SVG；都沒有時用暫用頭像
+const FILES = import.meta.glob('../assets/characters/*.{png,svg}', { eager: true, query: '?url', import: 'default' });
+const candidates = name => FILES[`../assets/characters/${name}.png`] ?? FILES[`../assets/characters/${name}.svg`] ?? null;
+const expressionFiles = id => Object.fromEntries(EXPRESSIONS.map(e => [e, candidates(`${id}-${e}`)]));
 
 export const CHARACTERS = {
   guide: {
@@ -24,7 +24,7 @@ export const CHARACTERS = {
     color: '#6366f1',
     images: expressionFiles('guide'),
     // 地圖用全身角色四方向（正面、背面、左、右）
-    mapSprites: { down: 'guide-front.png', up: 'guide-back.png', left: 'guide-left.png', right: 'guide-right.png' },
+    mapSprites: { down: candidates('guide-front'), up: candidates('guide-back'), left: candidates('guide-left'), right: candidates('guide-right') },
   },
   client: {
     id: 'client',
